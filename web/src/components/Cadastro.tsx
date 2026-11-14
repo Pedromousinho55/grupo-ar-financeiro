@@ -2,7 +2,8 @@
 // a partir de uma configuração de campos. Usado por todos os cadastros da Etapa 1.
 import { useCallback, useEffect, useMemo, useState, type FormEvent } from 'react'
 import { useAuth } from '../auth'
-import { documentoValido, formatarDocumento, soDigitos } from '../lib/documentos'
+import { consultarCnpj } from '../lib/consultaCnpj'
+import { cnpjValido, documentoValido, formatarDocumento, soDigitos } from '../lib/documentos'
 import { mensagemErro, supabase } from '../supabase'
 
 type Valor = string | number | boolean | null
@@ -36,6 +37,8 @@ export interface ConfigCadastro {
   editaQuem?: 'lancador' | 'master'
   podeIncluir?: boolean
   explicacao?: string
+  /** permite preencher os dados pelo CNPJ (consulta pública da Receita) */
+  consultaCnpj?: boolean
 }
 
 const vazioPara = (c: Campo): Valor => (c.tipo === 'sim_nao' ? true : '')
@@ -53,6 +56,7 @@ export default function Cadastro({ config }: { config: ConfigCadastro }) {
   const [erro, setErro] = useState('')
   const [aviso, setAviso] = useState('')
   const [salvando, setSalvando] = useState(false)
+  const [receita, setReceita] = useState<{ tipo: 'ok' | 'aviso' | 'erro' | 'buscando'; texto: string } | null>(null)
   const temAtivo = config.campos.some(c => c.chave === 'ativo')
 
   const carregar = useCallback(async () => {
@@ -105,9 +109,35 @@ export default function Cadastro({ config }: { config: ConfigCadastro }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [registros, busca, mostrarInativos, opcoes])
 
+  // Campos que vêm da Receita: sobrescrevem; telefone e e-mail só preenchem se estiverem vazios.
+  const SOBRESCREVE = ['razao_social', 'nome_fantasia', 'endereco', 'bairro', 'cidade', 'uf', 'cep', 'cnae_principal', 'situacao_cadastral']
+  async function buscarNaReceita(doc: string) {
+    setReceita({ tipo: 'buscando', texto: 'Consultando a Receita Federal…' })
+    try {
+      const d = await consultarCnpj(doc)
+      setEditando(ed => {
+        if (!ed) return ed
+        const novo: Record<string, Valor> = { ...ed, consultado_receita_em: new Date().toISOString() }
+        for (const k of SOBRESCREVE) if (k in ed) novo[k] = d[k as keyof typeof d] ?? null
+        if (!ed.telefone && d.telefone) novo.telefone = d.telefone
+        if (!ed.email && d.email) novo.email = d.email
+        return novo
+      })
+      const sit = d.situacao_cadastral ?? 'desconhecida'
+      setReceita(
+        sit === 'ATIVA'
+          ? { tipo: 'ok', texto: `Dados preenchidos pela Receita (fonte: ${d.fonte}). Situação: ATIVA. Confira e clique em Salvar.` }
+          : { tipo: 'aviso', texto: `Atenção: situação na Receita = ${sit}. Empresa nessa situação não deveria emitir nota. Confira antes de salvar.` },
+      )
+    } catch (e) {
+      setReceita({ tipo: 'erro', texto: (e as Error).message })
+    }
+  }
+
   function abrirNovo() {
     setErro('')
     setAviso('')
+    setReceita(null)
     setEditando(Object.fromEntries(config.campos.map(c => [c.chave, vazioPara(c)])))
   }
 
@@ -128,6 +158,7 @@ export default function Cadastro({ config }: { config: ConfigCadastro }) {
         return setErro(`${c.rotulo} inválido: o dígito verificador não confere. Confira o número.`)
       dados[c.chave] = v
     }
+    if (config.consultaCnpj && editando.consultado_receita_em) dados.consultado_receita_em = editando.consultado_receita_em
     setSalvando(true)
     const q = editando.id
       ? supabase.from(config.tabela).update(dados).eq('id', String(editando.id)).select().single()
@@ -194,6 +225,7 @@ export default function Cadastro({ config }: { config: ConfigCadastro }) {
                 onClick={() => {
                   setErro('')
                   setAviso('')
+                  setReceita(null)
                   setEditando({ ...r })
                 }}
               >
@@ -233,13 +265,31 @@ export default function Cadastro({ config }: { config: ConfigCadastro }) {
                       campo={c}
                       opcoes={opcoesDo(c)}
                       valor={editando[c.chave]}
-                      onChange={v => setEditando(ed => ({ ...ed!, [c.chave]: v }))}
+                      onChange={v => {
+                        setEditando(ed => ({ ...ed!, [c.chave]: v }))
+                        // fornecedor novo: ao completar um CNPJ válido, busca sozinho
+                        if (c.tipo === 'documento' && config.consultaCnpj && !editando.id && !editando.razao_social) {
+                          const dig = soDigitos(String(v))
+                          if (dig.length === 14 && cnpjValido(dig) && dig !== soDigitos(String(editando[c.chave] ?? ''))) buscarNaReceita(dig)
+                        }
+                      }}
                     />
+                    {c.tipo === 'documento' && config.consultaCnpj && podeEditar && (
+                      <button
+                        type="button"
+                        className="link"
+                        disabled={receita?.tipo === 'buscando' || !cnpjValido(String(editando[c.chave] ?? ''))}
+                        onClick={() => buscarNaReceita(String(editando[c.chave]))}
+                      >
+                        {receita?.tipo === 'buscando' ? 'Consultando…' : '↻ Buscar dados na Receita pelo CNPJ'}
+                      </button>
+                    )}
                     {c.dica && <small>{c.dica}</small>}
                   </label>
                 ))}
               </div>
             </fieldset>
+            {receita && <p className={receita.tipo === 'ok' ? 'ok' : receita.tipo === 'buscando' ? 'info' : receita.tipo === 'aviso' ? 'aviso' : 'erro'}>{receita.texto}</p>}
             {erro && <p className="erro">{erro}</p>}
             <div className="acoes">
               {editando.id && eMaster && (

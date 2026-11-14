@@ -143,3 +143,6 @@ fieldset { border: none; padding: 0; margin: 0; }
   .botao-menu { display: block; position: fixed; top: 1.6rem; left: 0.6rem; z-index: 36; padding: 0.3rem 0.6rem; }
   main { padding: 4.5rem 16px 2rem; }
 }
+.info { background: #eef3f8; color: #24496b; padding: 0.6rem 0.8rem; border-radius: 8px; }
+.aviso { background: var(--aviso-fundo); color: var(--aviso); padding: 0.6rem 0.8rem; border-radius: 8px; }
+.grade-campos .link { align-self: flex-start; font-size: 0.85rem; }
