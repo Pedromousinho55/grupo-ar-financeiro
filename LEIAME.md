@@ -25,7 +25,7 @@ que ninguém consegue apagar.
 ## Etapas
 - [x] Etapa 1a – Base de dados: lojas, usuários, plano de contas, grupos da DRE, centros de custo,
       fornecedores (banco/PIX), contas bancárias, formas de pagamento, histórico, alerta de certificado (30 dias)
-- [ ] Etapa 1b – Site com login e telas de cadastro; importação de Excel/CSV com tela de conferência
+- [x] Etapa 1b – Site com login e telas de cadastro; importação de Excel/CSV com tela de conferência (pasta `web/`)
 - [ ] Etapa 2a – Cofre de notas (upload de XML, foto/PDF do DANFE)
 - [ ] Etapa 2b – Coletor local + SEFAZ
 - [ ] Etapa 3 – Contas a pagar
@@ -41,8 +41,20 @@ que ninguém consegue apagar.
 Aplicar mudanças do banco: `python3 supabase/aplicar_migracoes.py teste` (ou `producao`).
 Sempre aplicar e testar primeiro no **teste**.
 
+## Como usar o site (Etapa 1)
+1. Entre com seu e-mail e senha. A faixa amarela indica **ambiente de teste**.
+2. **Início**: totais dos cadastros e situação dos certificados A1.
+3. **Fornecedores / Plano de contas / Centros de custo / ...**: clique em "+ Incluir" ou numa linha para editar.
+   CNPJ/CPF é conferido na hora (✓ válido / ✗ inválido). Para "apagar" algo já usado, prefira marcar como inativo.
+4. **Importar planilha**: escolha o tipo, envie o .xlsx/.csv do GRFood, confira as colunas sugeridas e as linhas
+   (Novas / Já existem / Com problema) e só então clique em "Gravar". Linhas com problema nunca são gravadas.
+5. **Histórico**: quem fez o quê e quando, com o antes → depois de cada alteração.
+6. **Usuários**: o master define quem lança, aprova ou só consulta.
+
 ## Para desenvolvedores: rodar os testes
 ```
 ./supabase/tests/rodar_testes.sh
 ```
 Cria um banco de teste do zero, aplica `supabase/migrations/` e roda `supabase/tests/`.
+
+Site: `cd web && npm install && npm test && npm run dev`
