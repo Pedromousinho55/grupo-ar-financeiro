@@ -121,3 +121,9 @@ do $$ begin
 end $$;
 
 \echo '>>> TODOS OS TESTES DA ETAPA 1 PASSARAM'
+
+do $$ begin
+  assert (select count(*) from public.lojas where razao_social is null or data_abertura is null) = 0, 'todas as lojas devem ter razão social e data de abertura';
+  assert (select razao_social from public.lojas where apelido='Arvo') = 'ARVO RESTAURANTE LTDA', 'Arvo deve estar como LTDA';
+end $$;
+\echo '>>> Dados dos cartões CNPJ conferidos'
