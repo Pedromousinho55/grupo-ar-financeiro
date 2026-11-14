@@ -32,6 +32,15 @@ que ninguém consegue apagar.
 - [ ] Etapa 4 – Bancos e conciliação (OFX; Santander via API a estudar)
 - [ ] Etapa 5 – Painel, fluxo de caixa, DRE, fechamento semanal/mensal e pacote do contador
 
+## Projetos no Supabase (região São Paulo, sa-east-1)
+| Ambiente | Projeto | Ref |
+|---|---|---|
+| Teste | financeiro-teste | ijcglclttkhzygpecour |
+| Produção | financeiro-producao | jxbpwkbxpascynflmtxi |
+
+Aplicar mudanças do banco: `python3 supabase/aplicar_migracoes.py teste` (ou `producao`).
+Sempre aplicar e testar primeiro no **teste**.
+
 ## Para desenvolvedores: rodar os testes
 ```
 ./supabase/tests/rodar_testes.sh
