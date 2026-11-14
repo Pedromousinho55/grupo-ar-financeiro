@@ -46,6 +46,8 @@ Sempre aplicar e testar primeiro no **teste**.
 2. **Início**: totais dos cadastros e situação dos certificados A1.
 3. **Fornecedores / Plano de contas / Centros de custo / ...**: clique em "+ Incluir" ou numa linha para editar.
    CNPJ/CPF é conferido na hora (✓ válido / ✗ inválido). Para "apagar" algo já usado, prefira marcar como inativo.
+   Fornecedor novo: ao digitar um CNPJ válido, os dados vêm sozinhos da Receita (BrasilAPI; reserva CNPJá).
+   Só o CNPJ é enviado. CPF não tem consulta pública. Situação diferente de ATIVA gera alerta.
 4. **Importar planilha**: escolha o tipo, envie o .xlsx/.csv do GRFood, confira as colunas sugeridas e as linhas
    (Novas / Já existem / Com problema) e só então clique em "Gravar". Linhas com problema nunca são gravadas.
 5. **Histórico**: quem fez o quê e quando, com o antes → depois de cada alteração.
