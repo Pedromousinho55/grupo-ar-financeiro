@@ -1,0 +1,7 @@
+# Nunca versionar certificados, senhas ou dados reais
+*.pfx
+*.p12
+.env
+.env.*
+dados_reais/
+node_modules/
