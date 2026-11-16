@@ -97,22 +97,29 @@ def get(url):
         return 0, None
 
 
+_ultima_cnpja = [0.0]
+
+
 def consultar(cnpj):
-    for tentativa in range(3):
+    # BrasilAPI às vezes responde 404 para CNPJ que existe: nunca confiar só nela.
+    for tentativa in range(2):
         st, d = get(f"https://brasilapi.com.br/api/cnpj/v1/{cnpj}")
         if d:
             return "ok", de_brasilapi(d)
+        time.sleep(2 if st == 404 else 8)
+    # reserva: limite de 5 consultas por minuto
+    espera = 12.5 - (time.time() - _ultima_cnpja[0])
+    if espera > 0:
+        time.sleep(espera)
+    for tentativa in range(3):
+        _ultima_cnpja[0] = time.time()
+        st, d = get(f"https://open.cnpja.com/office/{cnpj}")
+        if d:
+            return "ok", de_cnpja(d)
         if st == 404:
             return "nao_encontrado", None
-        if st == 429:
-            time.sleep(10 * (tentativa + 1))
-            continue
-        break
-    time.sleep(13)  # reserva tem limite de 5 por minuto
-    st, d = get(f"https://open.cnpja.com/office/{cnpj}")
-    if d:
-        return "ok", de_cnpja(d)
-    return ("nao_encontrado" if st == 404 else "falha"), None
+        time.sleep(15 * (tentativa + 1))
+    return "falha", None
 
 
 def gravar(ref, lote):

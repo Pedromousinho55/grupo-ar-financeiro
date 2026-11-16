@@ -93,21 +93,23 @@ async function buscarJson(url: string, ms = 8000) {
 export async function consultarCnpj(doc: string): Promise<DadosReceita> {
   const cnpj = soDigitos(doc)
   if (!cnpjValido(cnpj)) throw new Error('Digite um CNPJ válido para consultar. (CPF não tem consulta pública.)')
+  // A BrasilAPI às vezes responde "não encontrado" para CNPJ que existe:
+  // só concluímos "não encontrado" se a fonte reserva também disser isso.
   try {
     const r = await buscarJson(`https://brasilapi.com.br/api/cnpj/v1/${cnpj}`)
     if (r.json) return deBrasilApi(r.json)
-    if (r.status === 404) throw new Error('CNPJ não encontrado na Receita Federal.')
-  } catch (e) {
-    if ((e as Error).message.startsWith('CNPJ não encontrado')) throw e
-    // BrasilAPI fora do ar: tenta a reserva
+  } catch {
+    // fora do ar: segue para a reserva
   }
+  let status = 0
   try {
     const r = await buscarJson(`https://open.cnpja.com/office/${cnpj}`)
     if (r.json) return deCnpja(r.json)
-    if (r.status === 404) throw new Error('CNPJ não encontrado na Receita Federal.')
-    if (r.status === 429) throw new Error('Muitas consultas seguidas. Aguarde um minuto e tente de novo.')
-  } catch (e) {
-    if ((e as Error).message.match(/^(CNPJ não|Muitas)/)) throw e
+    status = r.status
+  } catch {
+    // fora do ar
   }
+  if (status === 404) throw new Error('CNPJ não encontrado na Receita Federal.')
+  if (status === 429) throw new Error('Muitas consultas seguidas. Aguarde um minuto e tente de novo.')
   throw new Error('Os serviços de consulta estão fora do ar agora. Preencha à mão ou tente mais tarde.')
 }
