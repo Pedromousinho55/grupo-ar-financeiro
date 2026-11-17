@@ -85,6 +85,10 @@ def processar_lote(banco: Banco, loja: dict, resposta: sefaz.Resposta, pasta_loc
                 dados.pop("chave")
                 banco.atualizar_nota(doc.chave, dados)  # resumo vira nota completa
                 notas += 1
+            else:
+                continue
+            # a mesma chave pode vir de novo no mesmo lote (ex.: resumo e depois a nota completa)
+            existentes[doc.chave] = {"chave": doc.chave, "tipo_documento": doc.tipo_documento, "xml_arquivo": arquivo}
         elif isinstance(doc, nfe_xml.Evento):
             if banco.incluir_evento({
                 "chave": doc.chave, "tipo_evento": doc.tipo_evento, "descricao": doc.descricao,

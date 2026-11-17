@@ -65,7 +65,8 @@ def cmd_configurar(cfg: dict) -> None:
     print("✓ Conectado ao sistema.\n")
     for loja in banco.lojas():
         atual = cfg["certificados"].get(loja["cnpj"], "")
-        sugestao = atual or str(PASTA.parent / "certificados" / f"{loja['apelido'].replace(' ', '')}.pfx")
+        # os .pfx ficam em C:\GrupoAR\certificados (ao lado da pasta do projeto, fora do repositório)
+        sugestao = atual or str(PASTA.parent.parent / "certificados" / f"{loja['apelido'].replace(' ', '')}.pfx")
         caminho = input(f"[{loja['apelido']}] arquivo .pfx [{sugestao}] (ou '-' para pular): ").strip() or sugestao
         if caminho == "-":
             continue
