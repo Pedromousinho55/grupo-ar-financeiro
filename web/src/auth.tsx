@@ -2,7 +2,7 @@ import type { Session } from '@supabase/supabase-js'
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import { supabase } from './supabase'
 
-export type Papel = 'master' | 'lancador' | 'consulta'
+export type Papel = 'master' | 'lancador' | 'consulta' | 'coletor'
 export interface Perfil {
   id: string
   nome: string
@@ -77,4 +77,5 @@ export const NOME_PAPEL: Record<Papel, string> = {
   master: 'Master (lança, aprova e administra)',
   lancador: 'Lançador (lança e consulta)',
   consulta: 'Só consulta',
+  coletor: 'Coletor SEFAZ (programa do escritório)',
 }

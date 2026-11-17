@@ -49,9 +49,9 @@ export default function Usuarios() {
               <td>{p.nome}</td>
               <td>{p.email}</td>
               <td>
-                {eMaster && p.id !== eu?.id ? (
+                {eMaster && p.id !== eu?.id && p.papel !== 'coletor' ? (
                   <select value={p.papel} onChange={e => alterar(p, { papel: e.target.value as Papel })}>
-                    {Object.entries(NOME_PAPEL).map(([k, v]) => (
+                    {Object.entries(NOME_PAPEL).filter(([k]) => k !== 'coletor').map(([k, v]) => (
                       <option key={k} value={k}>
                         {v}
                       </option>
