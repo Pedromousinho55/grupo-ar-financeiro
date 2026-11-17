@@ -137,3 +137,13 @@ do $$ begin
   assert (select tipo_despesa from public.plano_contas where codigo = '2.1.03') = 'variavel', 'taxa de antecipação variável';
 end $$;
 \echo '>>> Plano de contas do Grupo AR conferido (16 grupos, 82 subgrupos)'
+
+do $$ begin
+  assert (select bool_and(not p.operacional) from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where g.codigo in ('3.1','3.3')), '3.1 e 3.3 não operacionais';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.3.2') = 'variavel', 'gelo variável';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.6.2') = 'fixa', 'energia fixa';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.5.2') = 'variavel', 'taxa cartão variável';
+  assert (select natureza from public.plano_contas where codigo = '1.1.05') = 'deducao', 'descontos = dedução';
+  assert (select count(*) from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where g.codigo = '1.0.0' and p.natureza <> 'deducao') = 0, 'impostos = dedução';
+end $$;
+\echo '>>> Ajustes do plano de contas conferidos'
