@@ -26,7 +26,7 @@ que ninguém consegue apagar.
 - [x] Etapa 1a – Base de dados: lojas, usuários, plano de contas, grupos da DRE, centros de custo,
       fornecedores (banco/PIX), contas bancárias, formas de pagamento, histórico, alerta de certificado (30 dias)
 - [x] Etapa 1b – Site com login e telas de cadastro; importação de Excel/CSV com tela de conferência (pasta `web/`)
-- [ ] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — código pronto e testado; falta instalar no PC
+- [x] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — instalado no PC do escritório em 17/11/2026, agendado 08:10 e 14:10
 - [ ] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
 - [ ] Etapa 3 – Contas a pagar
 - [ ] Etapa 4 – Bancos e conciliação (OFX; Santander via API a estudar)

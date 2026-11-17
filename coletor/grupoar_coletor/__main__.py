@@ -15,7 +15,10 @@ import json
 import logging
 import subprocess
 import sys
+import tempfile
+from datetime import date
 from pathlib import Path
+from xml.sax.saxutils import escape
 
 from . import certificado, cofre
 from .banco import Banco
@@ -132,14 +135,57 @@ def cmd_coletar(cfg: dict, so_loja: str | None, ambiente: str) -> None:
         logging.info("Resultado: %s", r)
 
 
+TAREFAS = (("GrupoAR-Coletor-manha", "08:10"), ("GrupoAR-Coletor-tarde", "14:10"))
+
+
+def xml_tarefa(hora: str, python: Path, pasta: Path) -> str:
+    """Definição da tarefa do Agendador do Windows. Além do horário diário:
+    - StartWhenAvailable: se o PC estava desligado/dormindo no horário, roda assim que ligar;
+    - roda também na bateria (notebook) e não é interrompida ao tirar da tomada;
+    - não abre duas coletas ao mesmo tempo e encerra se passar de 1 hora."""
+    inicio = f"{date.today().isoformat()}T{hora}:00"
+    return f"""<?xml version="1.0" encoding="UTF-16"?>
+<Task version="1.2" xmlns="http://schemas.microsoft.com/windows/2004/02/mit/task">
+  <RegistrationInfo><Description>Coletor de NF-e do Grupo AR (somente leitura na SEFAZ)</Description></RegistrationInfo>
+  <Triggers>
+    <CalendarTrigger>
+      <StartBoundary>{inicio}</StartBoundary>
+      <Enabled>true</Enabled>
+      <ScheduleByDay><DaysInterval>1</DaysInterval></ScheduleByDay>
+    </CalendarTrigger>
+  </Triggers>
+  <Principals>
+    <Principal id="Author"><LogonType>InteractiveToken</LogonType><RunLevel>LeastPrivilege</RunLevel></Principal>
+  </Principals>
+  <Settings>
+    <MultipleInstancesPolicy>IgnoreNew</MultipleInstancesPolicy>
+    <DisallowStartIfOnBatteries>false</DisallowStartIfOnBatteries>
+    <StopIfGoingOnBatteries>false</StopIfGoingOnBatteries>
+    <StartWhenAvailable>true</StartWhenAvailable>
+    <ExecutionTimeLimit>PT1H</ExecutionTimeLimit>
+    <Enabled>true</Enabled>
+  </Settings>
+  <Actions Context="Author">
+    <Exec>
+      <Command>{escape(str(python))}</Command>
+      <Arguments>-m grupoar_coletor coletar</Arguments>
+      <WorkingDirectory>{escape(str(pasta))}</WorkingDirectory>
+    </Exec>
+  </Actions>
+</Task>
+"""
+
+
 def cmd_agendar() -> None:
     python = Path(sys.executable).with_name("pythonw.exe")
     if not python.exists():
         python = Path(sys.executable)
-    for nome, hora in (("GrupoAR-Coletor-manha", "08:10"), ("GrupoAR-Coletor-tarde", "14:10")):
-        comando = f'cmd /c cd /d "{PASTA}" && "{python}" -m grupoar_coletor coletar'
-        subprocess.run(["schtasks", "/Create", "/F", "/SC", "DAILY", "/ST", hora, "/TN", nome, "/TR", comando], check=True)
-        print(f"✓ Tarefa {nome} agendada para {hora} todos os dias")
+    with tempfile.TemporaryDirectory() as tmp:
+        for nome, hora in TAREFAS:
+            arq = Path(tmp) / f"{nome}.xml"
+            arq.write_text(xml_tarefa(hora, python, PASTA), encoding="utf-16")
+            subprocess.run(["schtasks", "/Create", "/F", "/TN", nome, "/XML", str(arq)], check=True)
+            print(f"✓ Tarefa {nome} agendada para {hora} todos os dias (se o PC estiver desligado, roda ao ligar)")
 
 
 def main() -> None:

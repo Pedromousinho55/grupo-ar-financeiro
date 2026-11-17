@@ -247,3 +247,18 @@ def test_erro_no_meio_nao_perde_nsu(tmp_path):
     assert "fora do ar" in r["erro"]
     assert banco.ctrl["loja-terra"]["ultimo_nsu"] == 1  # o que foi gravado fica; recomeça do 1
     assert banco.execucoes[0]["erro"]
+
+
+# ---------------- agendamento ----------------
+def test_tarefa_agendada_recupera_horario_perdido():
+    import xml.etree.ElementTree as ET
+    from grupoar_coletor.__main__ import xml_tarefa
+    xml = xml_tarefa("08:10", Path(r"C:\Py & Cia\pythonw.exe"), Path(r"C:\GrupoAR\grupo-ar-financeiro\coletor"))
+    ns = {"t": "http://schemas.microsoft.com/windows/2004/02/mit/task"}
+    raiz = ET.fromstring(xml.split("?>", 1)[1])  # XML válido, mesmo com "&" no caminho
+    cfg = raiz.find("t:Settings", ns)
+    assert cfg.find("t:StartWhenAvailable", ns).text == "true"  # PC desligado no horário: roda ao ligar
+    assert cfg.find("t:DisallowStartIfOnBatteries", ns).text == "false"
+    assert raiz.find(".//t:StartBoundary", ns).text.endswith("T08:10:00")
+    assert raiz.find(".//t:Command", ns).text == r"C:\Py & Cia\pythonw.exe"
+    assert raiz.find(".//t:Arguments", ns).text == "-m grupoar_coletor coletar"
