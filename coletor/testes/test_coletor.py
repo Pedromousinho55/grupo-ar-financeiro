@@ -262,3 +262,49 @@ def test_tarefa_agendada_recupera_horario_perdido():
     assert raiz.find(".//t:StartBoundary", ns).text.endswith("T08:10:00")
     assert raiz.find(".//t:Command", ns).text == r"C:\Py & Cia\pythonw.exe"
     assert raiz.find(".//t:Arguments", ns).text == "-m grupoar_coletor coletar"
+
+
+# ---------------- importação de XMLs (Klaus) ----------------
+def test_importa_zip_do_klaus_sem_duplicar(tmp_path):
+    import io
+    import zipfile
+    from grupoar_coletor import importar
+
+    banco = BancoFalso()
+    banco.lojas = lambda: [TERRA]
+    so_nfe = COMPLETA.split("<protNFe")[0].replace(f'<nfeProc {NS} versao="4.00">', "").replace("<NFe>", f"<NFe {NS}>")
+    so_nfe = so_nfe.replace(CHAVE, CHAVE2)  # outra nota, exportada sem o protocolo
+    de_outra = COMPLETA.replace("60543245000197", "11222333000181").replace(CHAVE, "2" * 44)
+    interno = io.BytesIO()
+    with zipfile.ZipFile(interno, "w") as z:
+        z.writestr("eventos/cancelamento.xml", CANCELAMENTO)
+    pacote = tmp_path / "Arvo-2026-11.zip"
+    with zipfile.ZipFile(pacote, "w") as z:
+        z.writestr("nfe/completa.xml", COMPLETA)
+        z.writestr("nfe/sem-protocolo.xml", so_nfe)
+        z.writestr("nfe/outra-empresa.xml", de_outra)
+        z.writestr("nfe/resumo.xml", RESUMO)
+        z.writestr("leia-me.txt", "não é xml")
+        z.writestr("eventos.zip", interno.getvalue())
+
+    r = importar.importar(banco, pacote, tmp_path / "xml")
+    assert r.arquivos == 5 and r.notas_novas == 2 and r.eventos_novos == 1
+    assert r.por_loja == {"Terra": 2} and r.de_outras_empresas == 1 and r.ignorados == 1 and not r.erros
+    assert banco.notas[CHAVE]["origem"] == "pasta" and banco.notas[CHAVE]["nsu"] is None
+    assert banco.notas[CHAVE2]["tipo_documento"] == "completa"
+    assert (tmp_path / "xml" / "60543245000197/2026/11" / f"{CHAVE}.xml").exists()
+
+    # importar de novo o mesmo pacote não duplica (BancoFalso.incluir_nota falharia)
+    r2 = importar.importar(banco, pacote, tmp_path / "xml")
+    assert r2.notas_novas == 0 and r2.ja_existiam == 2
+
+
+def test_pausar_loja_nao_consulta_sefaz(tmp_path, monkeypatch):
+    from grupoar_coletor import __main__ as cli
+    chamadas = []
+    monkeypatch.setattr(cli, "conectar", lambda cfg: object())
+    monkeypatch.setattr(cli, "_certificados", lambda cfg, banco: iter([(TERRA, Path("x.pfx"), "s", None)]))
+    monkeypatch.setattr(cli, "coletar_loja", lambda *a, **k: chamadas.append(a) or {})
+    cfg = {**cli.PADRAO, "pasta_xml": str(tmp_path), "coleta_pausada": {TERRA["cnpj"]: "Klaus"}}
+    cli.cmd_coletar(cfg, None, "producao")
+    assert chamadas == []

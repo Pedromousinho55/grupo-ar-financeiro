@@ -81,6 +81,10 @@ def ler_documento(schema: str, xml: bytes) -> Nota | Evento | None:
         return _resumo(raiz)
     if nome == "nfeProc":
         return _completa(raiz)
+    if nome == "NFe":  # XML da nota sem o protocolo (algumas exportações de sistemas trazem assim)
+        envelope = ET.Element(f"{{{NS['n']}}}nfeProc")
+        envelope.append(raiz)
+        return _completa(envelope)
     if nome == "resEvento":
         return _resumo_evento(raiz)
     if nome == "procEventoNFe":

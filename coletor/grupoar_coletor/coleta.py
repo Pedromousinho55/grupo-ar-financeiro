@@ -31,7 +31,7 @@ def caminho_arquivo(cnpj_loja: str, data_emissao: str | None, chave: str, resumo
     return f"{cnpj_loja}/{ano_mes}/{chave}{'-resumo' if resumo else ''}.xml"
 
 
-def registro_da_nota(n: nfe_xml.Nota, cnpj_loja: str, nsu: int, arquivo: str) -> dict:
+def registro_da_nota(n: nfe_xml.Nota, cnpj_loja: str, nsu: int | None, arquivo: str, origem: str = "sefaz") -> dict:
     return {
         "chave": n.chave,
         "destinatario_cnpj": n.destinatario_cnpj or cnpj_loja,
@@ -47,7 +47,7 @@ def registro_da_nota(n: nfe_xml.Nota, cnpj_loja: str, nsu: int, arquivo: str) ->
         "duplicatas": n.duplicatas,
         "dados": n.dados,
         "xml_arquivo": arquivo,
-        "origem": "sefaz",
+        "origem": origem,
         "nsu": nsu,
     }
 
@@ -62,14 +62,23 @@ def processar_lote(banco: Banco, loja: dict, resposta: sefaz.Resposta, pasta_loc
         except Exception as e:  # documento malformado: registra e segue (não perde os demais)
             log.warning("NSU %s (%s) não pôde ser lido: %s", d.nsu, d.schema, e)
             doc = None
-        lidos.append((d, xml, doc))
+        lidos.append((d.nsu, xml, doc))
+    return gravar_documentos(banco, lambda nota: loja, lidos, pasta_local)
 
+
+def gravar_documentos(banco: Banco, loja_da_nota, lidos: list, pasta_local: Path, origem: str = "sefaz") -> tuple[int, int]:
+    """Grava notas e eventos já lidos: lidos = [(nsu ou None, xml, documento)].
+    loja_da_nota(nota) devolve a loja dona da nota (ou None para pular).
+    Devolve (notas novas/atualizadas, eventos novos)."""
     existentes = banco.notas_existentes([doc.chave for _, _, doc in lidos if isinstance(doc, nfe_xml.Nota)])
     notas = eventos = 0
-    for d, xml, doc in lidos:
+    for nsu, xml, doc in lidos:
         if doc is None:
             continue
         if isinstance(doc, nfe_xml.Nota):
+            loja = loja_da_nota(doc)
+            if loja is None:
+                continue
             arquivo = caminho_arquivo(loja["cnpj"], doc.data_emissao, doc.chave, doc.tipo_documento == "resumo")
             local = pasta_local / arquivo
             local.parent.mkdir(parents=True, exist_ok=True)
@@ -77,7 +86,7 @@ def processar_lote(banco: Banco, loja: dict, resposta: sefaz.Resposta, pasta_loc
                 local.write_bytes(xml)  # cópia local (backup)
             banco.enviar_arquivo(arquivo, xml)
             atual = existentes.get(doc.chave)
-            dados = registro_da_nota(doc, loja["cnpj"], d.nsu, arquivo)
+            dados = registro_da_nota(doc, loja["cnpj"], nsu, arquivo, origem)
             if atual is None:
                 banco.incluir_nota(dados)
                 notas += 1
@@ -93,7 +102,7 @@ def processar_lote(banco: Banco, loja: dict, resposta: sefaz.Resposta, pasta_loc
             if banco.incluir_evento({
                 "chave": doc.chave, "tipo_evento": doc.tipo_evento, "descricao": doc.descricao,
                 "sequencia": doc.sequencia, "data_evento": doc.data_evento, "protocolo": doc.protocolo,
-                "nsu": d.nsu, "dados": doc.dados,
+                "nsu": nsu, "dados": doc.dados,
             }):
                 eventos += 1
     return notas, eventos
