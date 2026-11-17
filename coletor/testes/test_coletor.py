@@ -212,6 +212,19 @@ def test_coleta_completa_e_bloqueio_de_1_hora(tmp_path):
     assert r2["pulada"] and chamadas2 == []
 
 
+def test_mesma_nota_duas_vezes_no_mesmo_lote(tmp_path):
+    banco = BancoFalso()
+    banco.notas_existentes = lambda chaves: {}  # como o banco real: retrato tirado antes do lote
+    consultar, _ = sefaz_falsa([
+        resposta_soap("138", "ok", 3, 3, [(1, "resNFe_v1.01.xsd", RESUMO), (2, "procNFe_v4.00.xsd", COMPLETA),
+                                          (3, "resNFe_v1.01.xsd", RESUMO)]),
+    ])
+    r = coleta.coletar_loja(banco, TERRA, None, tmp_path, consultar=consultar)
+    assert r["erro"] is None and r["notas"] == 2  # incluiu o resumo e depois virou completa
+    assert banco.notas[CHAVE]["tipo_documento"] == "completa"  # o resumo repetido não volta atrás
+    assert banco.ctrl["loja-terra"]["ultimo_nsu"] == 3
+
+
 def test_consumo_indevido_nao_avanca_nsu(tmp_path):
     banco = BancoFalso()
     banco.ctrl["loja-terra"] = {"ultimo_nsu": 10}

@@ -5,3 +5,6 @@
 .env.*
 dados_reais/
 node_modules/
+
+# Cópias locais dos XML das notas fiscais (dados reais)
+xml/
