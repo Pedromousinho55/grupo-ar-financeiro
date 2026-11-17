@@ -16,7 +16,7 @@ const NOME_TABELA: Record<string, string> = {
   lojas: 'Loja',
   fornecedores: 'Fornecedor',
   plano_contas: 'Plano de contas',
-  grupos_dre: 'Grupo DRE',
+  grupos_dre: 'Grupo do plano',
   centros_custo: 'Centro de custo',
   contas_bancarias: 'Conta bancária',
   formas_pagamento: 'Forma de pagamento',

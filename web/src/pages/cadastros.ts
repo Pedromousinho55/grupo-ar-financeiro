@@ -68,46 +68,53 @@ export const FORNECEDORES: ConfigCadastro = {
   ],
 }
 
+const NATUREZAS = [
+  { valor: 'receita', rotulo: 'Receita' },
+  { valor: 'deducao', rotulo: 'Dedução' },
+  { valor: 'custo', rotulo: 'Custo' },
+  { valor: 'despesa', rotulo: 'Despesa' },
+  { valor: 'financeiro', rotulo: 'Financeiro' },
+  { valor: 'investimento', rotulo: 'Investimento' },
+  { valor: 'outros', rotulo: 'Outros' },
+]
+const TIPOS_DESPESA = [
+  { valor: 'fixa', rotulo: 'Despesa fixa' },
+  { valor: 'variavel', rotulo: 'Despesa variável' },
+]
+
 export const PLANO_CONTAS: ConfigCadastro = {
   tabela: 'plano_contas',
   titulo: 'Plano de contas',
-  singular: 'Conta',
-  ordem: 'nome',
-  explicacao: 'Cada conta pertence a um grupo da DRE. É isso que monta a DRE gerencial por loja.',
+  singular: 'Subgrupo',
+  ordem: 'ordem_codigo',
+  explicacao:
+    'Subgrupos do plano de contas, cada um dentro de um grupo (ex.: 2.6.2 Energia elétrica → 2.6 Despesas administrativas). É isso que monta a DRE gerencial por loja.',
   campos: [
-    { chave: 'codigo', rotulo: 'Código', naLista: true },
-    { chave: 'nome', rotulo: 'Nome', obrigatorio: true, naLista: true },
-    { chave: 'grupo_dre_id', rotulo: 'Grupo da DRE', tipo: 'selecao', opcoesDe: { tabela: 'grupos_dre', rotulo: 'nome' }, naLista: true },
+    { chave: 'codigo', rotulo: 'Código', obrigatorio: true, naLista: true, dica: 'Ex.: 2.6.15' },
+    { chave: 'nome', rotulo: 'Descrição', obrigatorio: true, naLista: true },
+    { chave: 'grupo_dre_id', rotulo: 'Grupo', tipo: 'selecao', obrigatorio: true, opcoesDe: { tabela: 'grupos_dre', rotulo: 'nome' }, naLista: true },
+    { chave: 'natureza', rotulo: 'Natureza', tipo: 'selecao', naLista: true, opcoes: NATUREZAS },
+    { chave: 'tipo_despesa', rotulo: 'Tipo de despesa', tipo: 'selecao', naLista: true, opcoes: TIPOS_DESPESA },
+    { chave: 'operacional', rotulo: 'Operacional', tipo: 'sim_nao', naLista: true },
     { chave: 'ativo', rotulo: 'Ativa', tipo: 'sim_nao' },
   ],
 }
 
 export const GRUPOS_DRE: ConfigCadastro = {
   tabela: 'grupos_dre',
-  titulo: 'Grupos da DRE',
+  titulo: 'Grupos do plano de contas',
   singular: 'Grupo',
-  ordem: 'ordem',
+  ordem: 'ordem_codigo',
   editaQuem: 'master',
-  explicacao: 'Estrutura da DRE gerencial. A "ordem" define a posição da linha no relatório.',
+  explicacao: 'Grupos do plano de contas (linhas da DRE gerencial), na ordem do código. Só o master altera.',
   campos: [
-    { chave: 'ordem', rotulo: 'Ordem', tipo: 'numero', obrigatorio: true, naLista: true },
-    { chave: 'nome', rotulo: 'Nome', obrigatorio: true, naLista: true },
-    {
-      chave: 'natureza',
-      rotulo: 'Natureza',
-      tipo: 'selecao',
-      obrigatorio: true,
-      naLista: true,
-      opcoes: [
-        { valor: 'receita', rotulo: 'Receita' },
-        { valor: 'deducao', rotulo: 'Dedução' },
-        { valor: 'custo', rotulo: 'Custo' },
-        { valor: 'despesa', rotulo: 'Despesa' },
-        { valor: 'financeiro', rotulo: 'Financeiro' },
-        { valor: 'investimento', rotulo: 'Investimento' },
-        { valor: 'outros', rotulo: 'Outros' },
-      ],
-    },
+    { chave: 'codigo', rotulo: 'Código', obrigatorio: true, naLista: true, dica: 'Ex.: 2.6' },
+    { chave: 'nome', rotulo: 'Descrição', obrigatorio: true, naLista: true },
+    { chave: 'grupo_pai_id', rotulo: 'Dentro do grupo', tipo: 'selecao', opcoesDe: { tabela: 'grupos_dre', rotulo: 'nome' }, naLista: true },
+    { chave: 'natureza', rotulo: 'Natureza', tipo: 'selecao', obrigatorio: true, naLista: true, opcoes: NATUREZAS },
+    { chave: 'tipo_despesa', rotulo: 'Tipo de despesa', tipo: 'selecao', naLista: true, opcoes: TIPOS_DESPESA },
+    { chave: 'operacional', rotulo: 'Operacional', tipo: 'sim_nao', naLista: true },
+    { chave: 'ordem', rotulo: 'Ordem na DRE', tipo: 'numero', obrigatorio: true },
   ],
 }
 

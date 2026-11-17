@@ -16,7 +16,7 @@ const MENU: [string, string][] = [
   ['/', 'Início'],
   ['/fornecedores', 'Fornecedores'],
   ['/plano-contas', 'Plano de contas'],
-  ['/grupos-dre', 'Grupos da DRE'],
+  ['/grupos-dre', 'Grupos do plano'],
   ['/centros-custo', 'Centros de custo'],
   ['/contas-bancarias', 'Contas bancárias'],
   ['/formas-pagamento', 'Formas de pagamento'],

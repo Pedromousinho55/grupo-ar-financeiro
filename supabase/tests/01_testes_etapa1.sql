@@ -127,3 +127,13 @@ do $$ begin
   assert (select razao_social from public.lojas where apelido='Arvo') = 'ARVO RESTAURANTE LTDA', 'Arvo deve estar como LTDA';
 end $$;
 \echo '>>> Dados dos cartões CNPJ conferidos'
+
+do $$ begin
+  assert (select count(*) from public.grupos_dre) = 16, 'devem existir 16 grupos';
+  assert (select count(*) from public.plano_contas) = 82, 'devem existir 82 subgrupos';
+  assert (select g.codigo from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where p.codigo = '2.6.2') = '2.6', 'Energia deve estar em 2.6';
+  assert (select p.codigo from public.grupos_dre g join public.grupos_dre p on p.id = g.grupo_pai_id where g.codigo = '1.0.0') = '1.0', '1.0.0 deve estar dentro de 1.0';
+  assert (select array_agg(codigo order by ordem_codigo) from public.plano_contas where codigo in ('2.6.2','2.6.10')) = array['2.6.2','2.6.10'], 'ordem numérica';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.1.03') = 'variavel', 'taxa de antecipação variável';
+end $$;
+\echo '>>> Plano de contas do Grupo AR conferido (16 grupos, 82 subgrupos)'
