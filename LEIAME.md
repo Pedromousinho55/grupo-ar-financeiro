@@ -26,8 +26,8 @@ que ninguém consegue apagar.
 - [x] Etapa 1a – Base de dados: lojas, usuários, plano de contas, grupos da DRE, centros de custo,
       fornecedores (banco/PIX), contas bancárias, formas de pagamento, histórico, alerta de certificado (30 dias)
 - [x] Etapa 1b – Site com login e telas de cadastro; importação de Excel/CSV com tela de conferência (pasta `web/`)
-- [ ] Etapa 2a – Cofre de notas (upload de XML, foto/PDF do DANFE)
-- [ ] Etapa 2b – Coletor local + SEFAZ
+- [ ] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — código pronto e testado; falta instalar no PC
+- [ ] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
 - [ ] Etapa 3 – Contas a pagar
 - [ ] Etapa 4 – Bancos e conciliação (OFX; Santander via API a estudar)
 - [ ] Etapa 5 – Painel, fluxo de caixa, DRE, fechamento semanal/mensal e pacote do contador
@@ -40,6 +40,15 @@ que ninguém consegue apagar.
 
 Aplicar mudanças do banco: `python3 supabase/aplicar_migracoes.py teste` (ou `producao`).
 Sempre aplicar e testar primeiro no **teste**.
+
+## Coletor de notas (pasta `coletor/`, roda no PC do escritório)
+- Consulta a SEFAZ (NFeDistribuicaoDFe) para cada loja com o certificado A1 da própria loja.
+- Senhas dos certificados e do usuário coletor: **Cofre de Credenciais do Windows** ("GrupoAR-Coletor").
+- Guarda o último NSU de cada CNPJ e respeita o bloqueio de 1 hora (cStat 137/656).
+- Grava resumos, notas completas (com duplicatas) e cancelamentos no Supabase; cópia local dos XMLs.
+- **Não faz manifestação** nesta versão (só leitura). A Ciência automática será ligada após aprovação.
+- Comandos: `configurar`, `certificados`, `coletar [--loja X]`, `agendar` (08:10 e 14:10).
+- Testes: `cd coletor && python -m pytest -q testes`
 
 ## Como usar o site (Etapa 1)
 1. Entre com seu e-mail e senha. A faixa amarela indica **ambiente de teste**.

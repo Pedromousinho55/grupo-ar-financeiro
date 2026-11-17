@@ -10,3 +10,4 @@ run tests/00_simula_supabase.sql
 sudo -u postgres psql -q -d $DB -c "create table if not exists public._migracoes (arquivo text primary key);"
 for f in migrations/*.sql; do echo "Aplicando $f"; run "$f"; done
 run tests/01_testes_etapa1.sql
+run tests/02_testes_notas.sql

@@ -1,0 +1,7 @@
+config.json
+logs/
+.venv/
+*.pfx
+*.p12
+cadeia_icp.pem
+__pycache__/
