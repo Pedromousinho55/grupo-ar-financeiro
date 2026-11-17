@@ -32,7 +32,7 @@ PowerShell e rode o mesmo comando de novo.
 .\.venv\Scripts\python.exe -m pip install pytest
 .\.venv\Scripts\python.exe -m pytest -q testes
 ```
-Devem passar todos (16).
+Devem passar todos (18).
 
 ## Passo 4 – Configurar (o PEDRO digita, numa janela do PowerShell)
 ```
@@ -99,6 +99,22 @@ Cria as tarefas "GrupoAR-Coletor-manha" (08:10) e "GrupoAR-Coletor-tarde" (14:10
 - Só roda com o Pedro **logado no Windows** (rodar sem login exigiria guardar a senha do Windows na tarefa).
 
 Para testar na hora: `Start-ScheduledTask -TaskName GrupoAR-Coletor-manha` e olhar o fim de `logs\coletor.log`.
+
+## Lojas cujas notas vêm do Klaus (contabilidade)
+O Klaus (https://app.klausfiscal.com.br, escritório SATIERF) já baixa da SEFAZ as notas da **Arvo** e da **Voar**.
+Se o coletor também consultar esses CNPJs, os dois sistemas se atrapalham (bloqueio 656 de 1 hora). Por isso,
+desde 17/11/2026 a coleta na SEFAZ dessas lojas fica **pausada** e as notas entram pela importação:
+
+1. No Klaus: Notas Fiscais → Empresa (ex.: Arvo) → Participação **Destinatário / Compra** → período →
+   Buscar → **Baixar notas do mês** (vem um .zip com os XMLs).
+2. Importar:
+   ```
+   .\.venv\Scripts\python.exe -m grupoar_coletor importar "C:\Users\pedro\Downloads\<arquivo>.zip"
+   ```
+   Aceita .zip, .xml ou uma pasta. Só entram notas cujo destinatário é uma das nossas lojas; reimportar o
+   mesmo arquivo não duplica. Não fala com a SEFAZ e não manifesta nada.
+
+Pausar/retomar a coleta de uma loja: `pausar --loja Arvo` / `retomar --loja Arvo` (fica no `config.json` deste PC).
 
 ## Atualizar o coletor depois de mudanças no GitHub
 ```

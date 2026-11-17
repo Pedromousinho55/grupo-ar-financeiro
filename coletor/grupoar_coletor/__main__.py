@@ -6,6 +6,9 @@ Comandos (rodar na pasta do coletor):
   python -m grupoar_coletor coletar        consulta a SEFAZ para todas as lojas (respeita o bloqueio de 1 hora)
   python -m grupoar_coletor coletar --loja Terra
   python -m grupoar_coletor agendar        cria as tarefas automáticas no Windows (08:10 e 14:10)
+  python -m grupoar_coletor pausar --loja Arvo     deixa de consultar a SEFAZ para a loja (ex.: notas vêm do Klaus)
+  python -m grupoar_coletor retomar --loja Arvo    volta a consultar
+  python -m grupoar_coletor importar <arquivo.zip | arquivo.xml | pasta>   importa XMLs baixados do Klaus
 """
 from __future__ import annotations
 
@@ -23,6 +26,7 @@ from xml.sax.saxutils import escape
 from . import certificado, cofre
 from .banco import Banco
 from .coleta import coletar_loja
+from .importar import importar
 
 PASTA = Path(__file__).resolve().parent.parent
 CONFIG = PASTA / "config.json"
@@ -34,6 +38,7 @@ PADRAO = {
     "pasta_xml": str(PASTA.parent / "xml"),
     "cadeia_icp": str(PASTA / "cadeia_icp.pem"),
     "certificados": {},  # cnpj -> caminho do .pfx
+    "coleta_pausada": {},  # cnpj -> motivo (ex.: notas vêm do Klaus da contabilidade)
 }
 
 
@@ -127,12 +132,53 @@ def cmd_coletar(cfg: dict, so_loja: str | None, ambiente: str) -> None:
     for loja, caminho, senha, problema in _certificados(cfg, banco):
         if so_loja and loja["apelido"].lower() != so_loja.lower():
             continue
+        if loja["cnpj"] in cfg["coleta_pausada"]:
+            logging.info("%s: coleta na SEFAZ pausada (%s)", loja["apelido"], cfg["coleta_pausada"][loja["cnpj"]])
+            continue
         if problema:
             logging.warning("%s: %s", loja["apelido"], problema)
             continue
         ctx = certificado.contexto_tls(caminho, senha, Path(cfg["cadeia_icp"]))
         r = coletar_loja(banco, loja, ctx, pasta_local, ambiente)
         logging.info("Resultado: %s", r)
+
+
+def _achar_loja(banco: Banco, apelido: str) -> dict:
+    for loja in banco.lojas():
+        if loja["apelido"].lower() == apelido.lower():
+            return loja
+    sys.exit(f"Loja não encontrada: {apelido}")
+
+
+def cmd_pausar(cfg: dict, apelido: str, motivo: str) -> None:
+    loja = _achar_loja(conectar(cfg), apelido)
+    cfg["coleta_pausada"][loja["cnpj"]] = motivo
+    salvar_config(cfg)
+    print(f"✓ {loja['apelido']}: coleta na SEFAZ pausada ({motivo}). Para voltar: retomar --loja {loja['apelido']}")
+
+
+def cmd_retomar(cfg: dict, apelido: str) -> None:
+    loja = _achar_loja(conectar(cfg), apelido)
+    cfg["coleta_pausada"].pop(loja["cnpj"], None)
+    salvar_config(cfg)
+    print(f"✓ {loja['apelido']}: coleta na SEFAZ retomada")
+
+
+def cmd_importar(cfg: dict, caminho: str) -> None:
+    if not Path(caminho).exists():
+        sys.exit(f"Arquivo ou pasta não encontrado: {caminho}")
+    r = importar(conectar(cfg), Path(caminho), Path(cfg["pasta_xml"]))
+    logging.info("Importação de %s: %s", caminho, r)
+    print(f"\nArquivos XML lidos: {r.arquivos}")
+    for apelido, qtd in sorted(r.por_loja.items()):
+        print(f"  {apelido}: {qtd} nota(s)")
+    print(f"Notas novas ou completadas: {r.notas_novas}   já existiam: {r.ja_existiam}   eventos novos: {r.eventos_novos}")
+    if r.de_outras_empresas:
+        print(f"De outras empresas (não importadas): {r.de_outras_empresas}")
+    if r.ignorados:
+        print(f"Ignorados (resumos ou outros tipos de documento): {r.ignorados}")
+    for erro in r.erros[:20]:
+        print(f"  ✗ {erro}")
 
 
 TAREFAS = (("GrupoAR-Coletor-manha", "08:10"), ("GrupoAR-Coletor-tarde", "14:10"))
@@ -197,6 +243,13 @@ def main() -> None:
     c.add_argument("--loja")
     c.add_argument("--homologacao", action="store_true", help="usa o ambiente de testes da SEFAZ")
     sub.add_parser("agendar")
+    pa = sub.add_parser("pausar", help="para de consultar a SEFAZ para uma loja")
+    pa.add_argument("--loja", required=True)
+    pa.add_argument("--motivo", default="notas vêm do Klaus da contabilidade")
+    re_ = sub.add_parser("retomar", help="volta a consultar a SEFAZ para uma loja")
+    re_.add_argument("--loja", required=True)
+    im = sub.add_parser("importar", help="importa XMLs (.xml, .zip ou pasta) baixados de outro sistema")
+    im.add_argument("caminho")
     a = p.parse_args()
 
     (PASTA / "logs").mkdir(exist_ok=True)
@@ -214,6 +267,12 @@ def main() -> None:
         cmd_coletar(cfg, a.loja, "homologacao" if a.homologacao else cfg["ambiente_sefaz"])
     elif a.comando == "agendar":
         cmd_agendar()
+    elif a.comando == "pausar":
+        cmd_pausar(cfg, a.loja, a.motivo)
+    elif a.comando == "retomar":
+        cmd_retomar(cfg, a.loja)
+    elif a.comando == "importar":
+        cmd_importar(cfg, a.caminho)
 
 
 if __name__ == "__main__":
