@@ -21,6 +21,7 @@ const TABELAS = [
 export default function Inicio() {
   const { perfil } = useAuth()
   const [contagens, setContagens] = useState<Record<string, number>>({})
+  const [aConferir, setAConferir] = useState<number | null>(null)
   const [alertas, setAlertas] = useState<Alerta[]>([])
 
   useEffect(() => {
@@ -29,6 +30,12 @@ export default function Inicio() {
         .from(t)
         .select('*', { count: 'exact', head: true })
         .then(({ count }) => setContagens(c => ({ ...c, [t]: count ?? 0 })))
+    supabase
+      .from('notas_fiscais')
+      .select('*', { count: 'exact', head: true })
+      .eq('status', 'na_sefaz')
+      .eq('situacao_sefaz', 'autorizada')
+      .then(({ count }) => setAConferir(count ?? 0))
     supabase
       .from('alertas_certificados')
       .select('*')
@@ -45,6 +52,10 @@ export default function Inicio() {
       </header>
 
       <div className="cartoes">
+        <Link to="/notas" className="cartao-num">
+          <b>{aConferir === null ? '…' : aConferir.toLocaleString('pt-BR')}</b>
+          <span>Notas a conferir</span>
+        </Link>
         {TABELAS.map(([t, rotulo, rota]) => (
           <Link key={t} to={rota} className="cartao-num">
             <b>{contagens[t] ?? '…'}</b>

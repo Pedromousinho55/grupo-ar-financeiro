@@ -27,7 +27,7 @@ que ninguém consegue apagar.
       fornecedores (banco/PIX), contas bancárias, formas de pagamento, histórico, alerta de certificado (30 dias)
 - [x] Etapa 1b – Site com login e telas de cadastro; importação de Excel/CSV com tela de conferência (pasta `web/`)
 - [x] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — instalado no PC do escritório em 17/11/2026, agendado 08:10 e 14:10
-- [ ] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
+- [x] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
 - [ ] Etapa 3 – Contas a pagar
 - [ ] Etapa 4 – Bancos e conciliação (OFX; Santander via API a estudar)
 - [ ] Etapa 5 – Painel, fluxo de caixa, DRE, fechamento semanal/mensal e pacote do contador
@@ -61,6 +61,18 @@ Sempre aplicar e testar primeiro no **teste**.
    (Novas / Já existem / Com problema) e só então clique em "Gravar". Linhas com problema nunca são gravadas.
 5. **Histórico**: quem fez o quê e quando, com o antes → depois de cada alteração.
 6. **Usuários**: o master define quem lança, aprova ou só consulta.
+
+## Cofre de notas (Etapa 2a)
+1. **Notas fiscais**: notas emitidas contra as lojas, com filtro por loja, período de emissão, status, situação na SEFAZ
+   e busca por fornecedor, nº da nota, CNPJ ou chave. O total soma só as notas válidas; canceladas aparecem riscadas.
+   "Resumo" = só temos o resumo da SEFAZ (sem itens/duplicatas); o XML completo chega pelo Klaus ou por "Enviar XML".
+2. Clique numa nota para ver itens, duplicatas (vencimentos), eventos (cancelamento, carta de correção) e baixar o XML.
+3. **Conferência** (lançador/master): A conferir → Recebida, Com problema ou Não reconhecida (as duas últimas exigem
+   observação). Fica registrado quem recebeu e quando, e tudo vai para o Histórico. "Lançada" virá do contas a pagar (Etapa 3).
+4. **Anexar DANFE**: foto ou PDF (até 20 MB). Arquivo enviado não é substituído nem apagado (guarda de 5 anos);
+   para corrigir, anexe outro.
+5. **Enviar XML**: escolha um ou vários .xml, confira (Nova / Completar resumo / Já existe / Outra empresa / Erro)
+   e só então grave. Notas de outras empresas e repetidas são ignoradas.
 
 ## Para desenvolvedores: rodar os testes
 ```

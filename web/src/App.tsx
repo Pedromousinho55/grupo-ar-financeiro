@@ -5,15 +5,18 @@ import Cadastro from './components/Cadastro'
 import { AMBIENTE } from './config'
 import * as C from './pages/cadastros'
 import DefinirSenha from './pages/DefinirSenha'
+import EnviarXml from './pages/EnviarXml'
 import Historico from './pages/Historico'
 import Importar from './pages/Importar'
 import Inicio from './pages/Inicio'
 import Login from './pages/Login'
+import Notas from './pages/Notas'
 import Usuarios from './pages/Usuarios'
 import { CHEGOU_PARA_DEFINIR_SENHA } from './supabase'
 
 const MENU: [string, string][] = [
   ['/', 'Início'],
+  ['/notas', 'Notas fiscais'],
   ['/fornecedores', 'Fornecedores'],
   ['/plano-contas', 'Plano de contas'],
   ['/grupos-dre', 'Grupos do plano'],
@@ -72,6 +75,8 @@ function Conteudo() {
       <main>
         <Routes>
           <Route path="/" element={<Inicio />} />
+          <Route path="/notas" element={<Notas />} />
+          <Route path="/notas/enviar" element={<EnviarXml />} />
           <Route path="/fornecedores" element={<Cadastro key="f" config={C.FORNECEDORES} />} />
           <Route path="/plano-contas" element={<Cadastro key="p" config={C.PLANO_CONTAS} />} />
           <Route path="/grupos-dre" element={<Cadastro key="g" config={C.GRUPOS_DRE} />} />
