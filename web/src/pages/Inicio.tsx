@@ -1,6 +1,8 @@
 import { useEffect, useState } from 'react'
 import { Link } from 'react-router-dom'
 import { useAuth } from '../auth'
+import { hojeRecife, somaDias } from '../lib/contas'
+import { dinheiro } from '../lib/notas'
 import { supabase } from '../supabase'
 
 interface Alerta {
@@ -23,6 +25,7 @@ export default function Inicio() {
   const [contagens, setContagens] = useState<Record<string, number>>({})
   const [aConferir, setAConferir] = useState<number | null>(null)
   const [alertas, setAlertas] = useState<Alerta[]>([])
+  const [contas, setContas] = useState<{ vencidas: number[]; hoje: number[]; semana: number[]; aAprovar: number[] } | null>(null)
 
   useEffect(() => {
     for (const [t] of TABELAS)
@@ -36,6 +39,28 @@ export default function Inicio() {
       .eq('status', 'na_sefaz')
       .eq('situacao_sefaz', 'autorizada')
       .then(({ count }) => setAConferir(count ?? 0))
+    const hoje = hojeRecife()
+    supabase
+      .from('contas_pagar')
+      .select('valor, vencimento, status')
+      .in('status', ['a_aprovar', 'aprovada'])
+      .lte('vencimento', somaDias(hoje, 6))
+      .limit(20000)
+      .then(({ data }) => {
+        const l = (data ?? []) as { valor: number; vencimento: string; status: string }[]
+        setContas(c => ({
+          vencidas: l.filter(x => x.vencimento < hoje).map(x => Number(x.valor)),
+          hoje: l.filter(x => x.vencimento === hoje).map(x => Number(x.valor)),
+          semana: l.filter(x => x.vencimento >= hoje).map(x => Number(x.valor)),
+          aAprovar: c?.aAprovar ?? [],
+        }))
+      })
+    supabase
+      .from('contas_pagar')
+      .select('valor')
+      .eq('status', 'a_aprovar')
+      .limit(20000)
+      .then(({ data }) => setContas(c => ({ vencidas: [], hoje: [], semana: [], ...c, aAprovar: (data ?? []).map(x => Number(x.valor)) })))
     supabase
       .from('alertas_certificados')
       .select('*')
@@ -51,6 +76,28 @@ export default function Inicio() {
         <h1>Olá, {perfil?.nome?.split(' ')[0]}</h1>
       </header>
 
+      <h2>Contas a pagar</h2>
+      <div className="cartoes">
+        {(
+          [
+            ['vencidas', 'Vencidas', 'vencidas'],
+            ['hoje', 'Vencem hoje', 'hoje'],
+            ['semana', 'Próximos 7 dias', 'semana'],
+            ['aAprovar', 'A aprovar', 'a_aprovar'],
+          ] as const
+        ).map(([k, rotulo, atalho]) => {
+          const v = contas?.[k] ?? []
+          return (
+            <Link key={k} to={`/contas?atalho=${atalho}`} className={`cartao-num${k === 'vencidas' && v.length > 0 ? ' alerta' : ''}`}>
+              <b>{contas === null ? '…' : v.length}</b>
+              <span>{rotulo}</span>
+              {v.length > 0 && <small>{dinheiro(v.reduce((a, b) => a + b, 0))}</small>}
+            </Link>
+          )
+        })}
+      </div>
+
+      <h2>Cadastros e notas</h2>
       <div className="cartoes">
         <Link to="/notas" className="cartao-num">
           <b>{aConferir === null ? '…' : aConferir.toLocaleString('pt-BR')}</b>
@@ -97,7 +144,7 @@ export default function Inicio() {
 
       <h2>Próximas etapas</h2>
       <p className="explicacao">
-        Aqui vão aparecer: contas que vencem hoje/semana/mês, notas na SEFAZ sem lançamento e pendências de conferência.
+        Aqui vão aparecer: saldos bancários e conciliação (Etapa 4), fluxo de caixa e DRE (Etapa 5).
       </p>
     </section>
   )

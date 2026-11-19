@@ -28,7 +28,7 @@ que ninguém consegue apagar.
 - [x] Etapa 1b – Site com login e telas de cadastro; importação de Excel/CSV com tela de conferência (pasta `web/`)
 - [x] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — instalado no PC do escritório em 17/11/2026, agendado 08:10 e 14:10
 - [x] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
-- [ ] Etapa 3 – Contas a pagar
+- [x] Etapa 3 – Contas a pagar (lançamento a partir da nota ou à mão, aprovação do master, baixa com comprovante)
 - [ ] Etapa 4 – Bancos e conciliação (OFX; Santander via API a estudar)
 - [ ] Etapa 5 – Painel, fluxo de caixa, DRE, fechamento semanal/mensal e pacote do contador
 
@@ -73,6 +73,21 @@ Sempre aplicar e testar primeiro no **teste**.
    para corrigir, anexe outro.
 5. **Enviar XML**: escolha um ou vários .xml, confira (Nova / Completar resumo / Já existe / Outra empresa / Erro)
    e só então grave. Notas de outras empresas e repetidas são ignoradas.
+
+## Contas a pagar (Etapa 3)
+1. **Lançar a partir da nota**: na nota fiscal, botão "Lançar no contas a pagar". Cada duplicata do XML vira uma conta
+   (sem duplicatas: uma conta com o valor total, vencendo na emissão + prazo padrão do fornecedor). Plano de contas,
+   centro de custo e forma de pagamento vêm sugeridos pelo último lançamento do mesmo fornecedor. A nota fica "Lançada".
+2. **Lançar à mão** (aluguel, folha, impostos…): "+ Nova conta". "Repetir por N meses" cria uma conta por mês
+   (mesmo valor, ou o valor dividido em parcelas).
+3. **Aprovação**: conta lançada pelo lançador entra "A aprovar"; só o master aprova (uma a uma ou marcando várias).
+   Conta do master já nasce aprovada. Se o lançador mudar valor, vencimento ou classificação de uma conta aprovada,
+   ela volta para a aprovação.
+4. **Pagamento (baixa)**: só de conta aprovada, com data, valor pago (juros/desconto), conta bancária e comprovante.
+   Conta paga fica travada; só o master estorna. Comprovante enviado não é apagado nem substituído.
+5. **Cancelar** exige motivo (lançador cancela só o que ainda está "A aprovar"). Nada é apagado; tudo vai para o Histórico.
+   Se todas as contas de uma nota forem canceladas, a nota volta para "Recebida".
+6. **Início**: cartões de contas vencidas, que vencem hoje, nos próximos 7 dias e a aprovar.
 
 ## Para desenvolvedores: rodar os testes
 ```

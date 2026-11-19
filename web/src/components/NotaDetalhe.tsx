@@ -1,6 +1,7 @@
 // Janela com tudo sobre uma nota: dados, itens, duplicatas, eventos, arquivos e status de recebimento.
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useAuth } from '../auth'
+import { CLASSE_STATUS_CONTA, NOME_STATUS_CONTA, type StatusConta } from '../lib/contas'
 import { formatarDocumento } from '../lib/documentos'
 import { caminhoDanfe, type Duplicata, type Item } from '../lib/nfe'
 import {
@@ -16,9 +17,12 @@ import {
   type StatusNota,
 } from '../lib/notas'
 import { mensagemErro, supabase } from '../supabase'
+import LancarNota, { type NotaParaLancar } from './LancarNota'
 
 interface NotaCompleta {
   id: string
+  loja_id: string | null
+  fornecedor_id: string | null
   chave: string
   emitente_cnpj: string
   emitente_nome: string | null
@@ -49,6 +53,14 @@ interface NotaCompleta {
   recebedor: { nome: string } | null
 }
 
+interface ContaDaNota {
+  id: string
+  parcela: string | null
+  vencimento: string
+  valor: number
+  status: StatusConta
+}
+
 interface Evento {
   id: string
   tipo_evento: string
@@ -74,6 +86,8 @@ export default function NotaDetalhe({ id, aoFechar }: { id: string; aoFechar: (a
   const [aviso, setAviso] = useState('')
   const [ocupado, setOcupado] = useState('')
   const [alterou, setAlterou] = useState(false)
+  const [contas, setContas] = useState<ContaDaNota[]>([])
+  const [lancando, setLancando] = useState(false)
 
   const carregar = useCallback(async () => {
     const { data, error } = await supabase
@@ -88,6 +102,8 @@ export default function NotaDetalhe({ id, aoFechar }: { id: string; aoFechar: (a
     setObservacao(n.observacao ?? '')
     const ev = await supabase.from('eventos_nfe').select('id, tipo_evento, descricao, data_evento, dados').eq('chave', n.chave).order('data_evento')
     setEventos((ev.data ?? []) as Evento[])
+    const ct = await supabase.from('contas_pagar').select('id, parcela, vencimento, valor, status').eq('nota_id', n.id).order('vencimento')
+    setContas((ct.data ?? []) as ContaDaNota[])
   }, [id])
 
   useEffect(() => {
@@ -95,6 +111,22 @@ export default function NotaDetalhe({ id, aoFechar }: { id: string; aoFechar: (a
   }, [carregar])
 
   const fechar = () => aoFechar(alterou)
+
+  const paraLancar = useMemo<NotaParaLancar | null>(
+    () =>
+      nota && {
+        id: nota.id,
+        numero: nota.numero,
+        emitente_nome: nota.fornecedor?.razao_social ?? nota.emitente_nome,
+        data_emissao: nota.data_emissao,
+        valor_total: nota.valor_total,
+        duplicatas: nota.duplicatas,
+        fornecedor_id: nota.fornecedor_id,
+        loja_id: nota.loja_id,
+        forma_pagamento: nota.dados.forma_pagamento,
+      },
+    [nota],
+  )
 
   async function abrirArquivo(caminho: string, baixarComo?: string) {
     setErro('')
@@ -279,6 +311,39 @@ export default function NotaDetalhe({ id, aoFechar }: { id: string; aoFechar: (a
           </>
         )}
 
+        <h3>Contas a pagar</h3>
+        {contas.length > 0 ? (
+          <table className="compacta">
+            <thead>
+              <tr>
+                <th>Parcela</th>
+                <th>Vencimento</th>
+                <th className="num">Valor</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              {contas.map(c => (
+                <tr key={c.id} className={c.status === 'cancelada' ? 'inativo' : ''}>
+                  <td>{c.parcela ?? 'única'}</td>
+                  <td>{dataBr(c.vencimento)}</td>
+                  <td className="num">{dinheiro(c.valor)}</td>
+                  <td>
+                    <span className={`selo ${CLASSE_STATUS_CONTA[c.status]}`}>{NOME_STATUS_CONTA[c.status]}</span>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        ) : (
+          <p className="contagem">Ainda não lançada no contas a pagar.</p>
+        )}
+        {podeLancar && nota.situacao_sefaz === 'autorizada' && nota.loja_id && !contas.some(c => c.status !== 'cancelada') && (
+          <button className="primario" onClick={() => setLancando(true)}>
+            Lançar no contas a pagar
+          </button>
+        )}
+
         {itens.length > 0 && (
           <>
             <h3>Itens ({itens.length})</h3>
@@ -368,6 +433,21 @@ export default function NotaDetalhe({ id, aoFechar }: { id: string; aoFechar: (a
           )}
         </div>
       </div>
+      {lancando && paraLancar && (
+        <div onClick={e => e.stopPropagation()}>
+          <LancarNota
+            nota={paraLancar}
+            aoFechar={gravou => {
+              setLancando(false)
+              if (gravou) {
+                setAviso('Nota lançada no contas a pagar.')
+                setAlterou(true)
+                carregar()
+              }
+            }}
+          />
+        </div>
+      )}
     </div>
   )
 }

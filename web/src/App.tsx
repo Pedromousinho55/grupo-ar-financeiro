@@ -2,6 +2,7 @@ import { useState } from 'react'
 import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-dom'
 import { AuthProvider, NOME_PAPEL, useAuth } from './auth'
 import Cadastro from './components/Cadastro'
+import ContasPagar from './pages/ContasPagar'
 import { AMBIENTE } from './config'
 import * as C from './pages/cadastros'
 import DefinirSenha from './pages/DefinirSenha'
@@ -17,6 +18,7 @@ import { CHEGOU_PARA_DEFINIR_SENHA } from './supabase'
 const MENU: [string, string][] = [
   ['/', 'Início'],
   ['/notas', 'Notas fiscais'],
+  ['/contas', 'Contas a pagar'],
   ['/fornecedores', 'Fornecedores'],
   ['/plano-contas', 'Plano de contas'],
   ['/grupos-dre', 'Grupos do plano'],
@@ -77,6 +79,7 @@ function Conteudo() {
           <Route path="/" element={<Inicio />} />
           <Route path="/notas" element={<Notas />} />
           <Route path="/notas/enviar" element={<EnviarXml />} />
+          <Route path="/contas" element={<ContasPagar />} />
           <Route path="/fornecedores" element={<Cadastro key="f" config={C.FORNECEDORES} />} />
           <Route path="/plano-contas" element={<Cadastro key="p" config={C.PLANO_CONTAS} />} />
           <Route path="/grupos-dre" element={<Cadastro key="g" config={C.GRUPOS_DRE} />} />

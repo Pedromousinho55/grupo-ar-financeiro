@@ -189,3 +189,15 @@ td.arquivo { font-size: 0.8rem; word-break: break-all; max-width: 220px; }
   .ficha dt { margin-top: 0.4rem; }
   .periodo input { flex: 1 1 130px; min-width: 0; }
 }
+
+/* contas a pagar */
+.atalhos { display: flex; gap: 0.4rem; flex-wrap: wrap; margin-bottom: 0.8rem; }
+.atalhos button { padding: 0.35rem 0.75rem; font-size: 0.88rem; }
+.barra-lote { display: flex; gap: 1rem; align-items: center; justify-content: space-between; flex-wrap: wrap; margin-bottom: 0.6rem; }
+.barra-lote .check { white-space: normal; }
+input.marcador { width: auto; }
+input.num { text-align: right; }
+.cartao-num small { color: var(--suave); font-size: 0.8rem; }
+.cartao-num.alerta { border-color: #f1b8b3; background: var(--erro-fundo); }
+.cartao-num.alerta b { color: var(--erro); }
+.acoes-conta { flex-wrap: wrap; }

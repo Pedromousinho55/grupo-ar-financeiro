@@ -3,14 +3,31 @@
 Uso:  python3 supabase/aplicar_migracoes.py teste|producao
 
 Usa a API de gerenciamento do Supabase. O token de acesso NÃO fica neste código:
-na sessão de desenvolvimento ele é injetado pela rede segura; em outro computador,
-defina a variável SUPABASE_ACCESS_TOKEN.
+na sessão de desenvolvimento ele é injetado pela rede segura; no PC do escritório ele fica no
+Cofre de Credenciais do Windows ("GrupoAR-Coletor" / "supabase-access-token"); ou defina a
+variável SUPABASE_ACCESS_TOKEN.
 """
 import json
 import os
 import pathlib
 import sys
 import urllib.request
+
+COFRE = ("GrupoAR-Coletor", "supabase-access-token")
+
+
+def token() -> str:
+    if os.environ.get("SUPABASE_ACCESS_TOKEN"):
+        return os.environ["SUPABASE_ACCESS_TOKEN"]
+    try:
+        import keyring  # instalado no ambiente do coletor
+        guardado = keyring.get_password(*COFRE)
+        if guardado:
+            return guardado
+    except ImportError:
+        pass
+    return "proxy-injected"
+
 
 PROJETOS = {"teste": "ijcglclttkhzygpecour", "producao": "jxbpwkbxpascynflmtxi"}
 PASTA = pathlib.Path(__file__).parent / "migrations"
@@ -21,7 +38,7 @@ def sql(ref: str, query: str):
         f"https://api.supabase.com/v1/projects/{ref}/database/query",
         data=json.dumps({"query": query}).encode(),
         headers={"Content-Type": "application/json",
-                 "Authorization": "Bearer " + os.environ.get("SUPABASE_ACCESS_TOKEN", "proxy-injected")},
+                 "Authorization": "Bearer " + token()},
         method="POST",
     )
     try:
