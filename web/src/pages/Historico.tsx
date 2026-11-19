@@ -22,12 +22,16 @@ const NOME_TABELA: Record<string, string> = {
   formas_pagamento: 'Forma de pagamento',
   certificados: 'Certificado',
   perfis: 'Usuário',
+  notas_fiscais: 'Nota fiscal',
+  eventos_nfe: 'Evento de nota (SEFAZ)',
 }
 const NOME_ACAO = { INSERT: 'incluiu', UPDATE: 'alterou', DELETE: 'apagou' }
-const IGNORAR = new Set(['id', 'criado_em', 'atualizado_em'])
+// dados/duplicatas das notas são o conteúdo do XML (itens etc.): longos demais para o histórico
+const IGNORAR = new Set(['id', 'criado_em', 'atualizado_em', 'dados', 'duplicatas'])
 
 function resumo(e: Evento): string {
   const r = e.depois ?? e.antes ?? {}
+  if (e.tabela === 'notas_fiscais') return `NF-e ${r.numero ?? ''} · ${r.emitente_nome ?? ''}`
   return String(r.razao_social ?? r.nome ?? r.apelido ?? r.descricao ?? r.titular ?? '')
 }
 
