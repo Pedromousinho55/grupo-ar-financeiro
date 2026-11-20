@@ -29,7 +29,7 @@ que ninguém consegue apagar.
 - [x] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — instalado no PC do escritório em 17/11/2026, agendado 08:10 e 14:10
 - [x] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
 - [x] Etapa 3 – Contas a pagar (lançamento a partir da nota ou à mão, aprovação do master, baixa com comprovante)
-- [~] Etapa 4 – Bancos e conciliação: importação de extrato (planilha do Santander ou OFX) e conciliação feitas; faltam regras automáticas (Santander via API a estudar)
+- [x] Etapa 4 – Bancos e conciliação: importação de extrato (planilha do Santander ou OFX), conciliação e regras automáticas (Santander via API a estudar)
 - [ ] Etapa 5 – Painel, fluxo de caixa, DRE, fechamento semanal/mensal e pacote do contador
 
 ## Projetos no Supabase (região São Paulo, sa-east-1)
@@ -102,6 +102,10 @@ Sempre aplicar e testar primeiro no **teste**.
    - transferência entre contas do grupo ou aplicação/resgate Contamax.
 4. Master e lançador conciliam; conta "a aprovar" só o master concilia (vale como aprovação); só o master desfaz.
    Pagamento conciliado não é estornado pela tela da conta: desfaz-se pela conciliação.
+5. **Regras de conciliação** (só o master cria/altera): "histórico começa com/contém TEXTO" (+ saída/entrada, conta, faixa de valor)
+   → transferência, receita ou conta a pagar já paga. A primeira regra que bate (menor prioridade) decide. Regra "automática" concilia
+   sozinha ao importar o extrato; "só sugere" aparece na Conciliação para confirmar em lote. A tela mostra quantas linhas pendentes
+   cada regra pega. Pagamentos entre empresas do grupo (ex.: Arvo → SFC para cobrir folha/impostos) não têm regra: tratar caso a caso.
 
 ## Para desenvolvedores: rodar os testes
 ```

@@ -4,6 +4,7 @@ import { useAuth } from '../auth'
 import type { ContaCandidata } from '../lib/conciliacao'
 import { NOME_STATUS_CONTA } from '../lib/contas'
 import { dataBr, dinheiro } from '../lib/notas'
+import { NOME_ACAO, type Regra } from '../lib/regras'
 import { mensagemErro, supabase } from '../supabase'
 import { useCadastrosConta } from './cadastrosConta'
 
@@ -30,23 +31,25 @@ export interface CandidataConta extends ContaCandidata {
   fornecedor: { razao_social: string; nome_fantasia: string | null } | null
 }
 
-type Modo = 'sugestao' | 'buscar' | 'criar' | 'receita' | 'transferencia'
+type Modo = 'regra' | 'sugestao' | 'buscar' | 'criar' | 'receita' | 'transferencia'
 
 export default function ConciliarLinha({
   linha,
   lojaId,
   sugestoes,
+  regra = null,
   aoFechar,
 }: {
   linha: LinhaExtrato
   lojaId: string
   sugestoes: CandidataConta[]
+  regra?: Regra | null
   aoFechar: (alterou: boolean) => void
 }) {
   const { podeLancar, eMaster } = useAuth()
   const cad = useCadastrosConta()
   const saida = linha.valor < 0
-  const [modo, setModo] = useState<Modo>(saida ? (sugestoes.length ? 'sugestao' : 'criar') : 'receita')
+  const [modo, setModo] = useState<Modo>(sugestoes.length ? 'sugestao' : regra ? 'regra' : saida ? 'criar' : 'receita')
   const [escolhida, setEscolhida] = useState(sugestoes[0]?.id ?? '')
   const [busca, setBusca] = useState('')
   const [achadas, setAchadas] = useState<CandidataConta[]>([])
@@ -99,6 +102,7 @@ export default function ConciliarLinha({
   }
 
   function confirmar() {
+    if (modo === 'regra' && regra) return executar(() => supabase.rpc('aplicar_regra', { p_lancamento: linha.id, p_regra: regra.id }))
     if (modo === 'sugestao' || modo === 'buscar') {
       if (!escolhida) return setErro('Escolha a conta a pagar.')
       return executar(() => supabase.rpc('conciliar_com_conta', { p_lancamento: linha.id, p_conta: escolhida }))
@@ -142,17 +146,18 @@ export default function ConciliarLinha({
     return executar(() => supabase.from('extrato_lancamentos').update({ conciliado: false }).eq('id', linha.id))
   }
 
-  const opcoes: [Modo, string][] = saida
+  const deRegra: [Modo, string][] = regra ? [['regra', `Regra: ${regra.nome}`]] : []
+  const opcoes: [Modo, string][] = deRegra.concat(saida
     ? [
         ...(sugestoes.length ? ([['sugestao', `Sugestões (${sugestoes.length})`]] as [Modo, string][]) : []),
         ['buscar', 'Procurar conta a pagar'],
         ['criar', 'Lançar conta (já paga)'],
         ['transferencia', 'Transferência entre contas do grupo'],
       ]
-    : [
+    : ([
         ['receita', 'Receita'],
         ['transferencia', 'Transferência entre contas do grupo'],
-      ]
+      ] as [Modo, string][]))
 
   return (
     <div className="fundo-modal" onClick={() => aoFechar(false)}>
@@ -189,6 +194,13 @@ export default function ConciliarLinha({
                 </button>
               ))}
             </div>
+
+            {modo === 'regra' && regra && (
+              <p className="info">
+                A regra <b>{regra.nome}</b> concilia esta linha como <b>{NOME_ACAO[regra.acao]}</b>
+                {regra.plano_conta_id ? ` em ${cad.planos.find(p => p.id === regra.plano_conta_id)?.nome ?? ''}` : ''}.
+              </p>
+            )}
 
             {(modo === 'sugestao' || modo === 'buscar') && (
               <>
