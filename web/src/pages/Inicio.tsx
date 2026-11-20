@@ -128,7 +128,7 @@ export default function Inicio() {
               <td>{a.valido_ate ? new Date(a.valido_ate + 'T12:00:00').toLocaleDateString('pt-BR') : '—'}</td>
               <td>
                 {a.valido_ate === null ? (
-                  <span className="selo neutro">Aguardando o coletor (Etapa 2b)</span>
+                  <span className="selo neutro">Sem certificado no sistema</span>
                 ) : a.situacao === 'OK' ? (
                   <span className="selo ok">OK · {a.dias_restantes} dias</span>
                 ) : (
