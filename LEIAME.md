@@ -29,7 +29,7 @@ que ninguém consegue apagar.
 - [x] Etapa 2b – Coletor local + SEFAZ (feita antes da 2a, a pedido do Pedro) — instalado no PC do escritório em 17/11/2026, agendado 08:10 e 14:10
 - [x] Etapa 2a – Cofre de notas: telas (lista de notas, status, upload de XML, foto/PDF do DANFE)
 - [x] Etapa 3 – Contas a pagar (lançamento a partir da nota ou à mão, aprovação do master, baixa com comprovante)
-- [ ] Etapa 4 – Bancos e conciliação (OFX; Santander via API a estudar)
+- [~] Etapa 4 – Bancos e conciliação: importação de extrato (planilha do Santander ou OFX) e conciliação feitas; faltam regras automáticas (Santander via API a estudar)
 - [ ] Etapa 5 – Painel, fluxo de caixa, DRE, fechamento semanal/mensal e pacote do contador
 
 ## Projetos no Supabase (região São Paulo, sa-east-1)
@@ -88,6 +88,20 @@ Sempre aplicar e testar primeiro no **teste**.
 5. **Cancelar** exige motivo (lançador cancela só o que ainda está "A aprovar"). Nada é apagado; tudo vai para o Histórico.
    Se todas as contas de uma nota forem canceladas, a nota volta para "Recebida".
 6. **Início**: cartões de contas vencidas, que vencem hoje, nos próximos 7 dias e a aprovar.
+
+## Bancos e conciliação (Etapa 4)
+1. **Bancos**: saldo de cada conta calculado pelo sistema (saldo inicial + extratos) comparado com o saldo do banco no último
+   arquivo; "confere" quando bate. O saldo inicial (31/10/2026 = R$ 0,00, porque a Contamax zera a conta corrente) fica em Contas bancárias.
+2. **Importar extrato**: planilha exportada do Santander (.xlsx, nomeada "Extrato_<empresa>.xlsx" — a conta é reconhecida pelo nome)
+   ou OFX. Reimportar não duplica; lançamentos agendados para depois de hoje ficam para o próximo extrato.
+3. **Conciliação**: cada linha do extrato é explicada como
+   - saída ligada a uma conta a pagar (sugestão por valor igual e data próxima; dá para confirmar várias de uma vez) — a conta vira "Paga"
+     com a data e o valor do banco;
+   - saída sem conta lançada (tarifa, folha, imposto): vira na hora uma conta a pagar já paga;
+   - entrada classificada como receita no plano de contas;
+   - transferência entre contas do grupo ou aplicação/resgate Contamax.
+4. Master e lançador conciliam; conta "a aprovar" só o master concilia (vale como aprovação); só o master desfaz.
+   Pagamento conciliado não é estornado pela tela da conta: desfaz-se pela conciliação.
 
 ## Para desenvolvedores: rodar os testes
 ```

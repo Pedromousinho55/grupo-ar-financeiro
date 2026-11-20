@@ -201,3 +201,9 @@ input.num { text-align: right; }
 .cartao-num.alerta { border-color: #f1b8b3; background: var(--erro-fundo); }
 .cartao-num.alerta b { color: var(--erro); }
 .acoes-conta { flex-wrap: wrap; }
+
+/* bancos e conciliação */
+td.saida { color: var(--erro); }
+td.entrada { color: var(--ok); }
+.pre { white-space: pre-line; }
+.opcoes-status.lista { grid-template-columns: 1fr; margin-top: 0.6rem; max-height: 45vh; overflow-y: auto; }
