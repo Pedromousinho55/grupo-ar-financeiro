@@ -5,6 +5,7 @@ import Cadastro from './components/Cadastro'
 import ContasPagar from './pages/ContasPagar'
 import Bancos from './pages/Bancos'
 import Conciliacao from './pages/Conciliacao'
+import Regras from './pages/Regras'
 import { AMBIENTE } from './config'
 import * as C from './pages/cadastros'
 import DefinirSenha from './pages/DefinirSenha'
@@ -23,6 +24,7 @@ const MENU: [string, string][] = [
   ['/contas', 'Contas a pagar'],
   ['/bancos', 'Bancos'],
   ['/conciliacao', 'Conciliação'],
+  ['/regras', 'Regras de conciliação'],
   ['/fornecedores', 'Fornecedores'],
   ['/plano-contas', 'Plano de contas'],
   ['/grupos-dre', 'Grupos do plano'],
@@ -86,6 +88,7 @@ function Conteudo() {
           <Route path="/contas" element={<ContasPagar />} />
           <Route path="/bancos" element={<Bancos />} />
           <Route path="/conciliacao" element={<Conciliacao />} />
+          <Route path="/regras" element={<Regras />} />
           <Route path="/fornecedores" element={<Cadastro key="f" config={C.FORNECEDORES} />} />
           <Route path="/plano-contas" element={<Cadastro key="p" config={C.PLANO_CONTAS} />} />
           <Route path="/grupos-dre" element={<Cadastro key="g" config={C.GRUPOS_DRE} />} />

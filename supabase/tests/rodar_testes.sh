@@ -13,3 +13,4 @@ run tests/01_testes_etapa1.sql
 run tests/02_testes_notas.sql
 run tests/03_testes_contas.sql
 run tests/04_testes_extratos.sql
+run tests/05_testes_regras.sql
