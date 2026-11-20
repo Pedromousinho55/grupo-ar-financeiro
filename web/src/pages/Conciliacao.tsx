@@ -4,6 +4,7 @@ import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth'
 import ConciliarLinha, { type CandidataConta, type LinhaExtrato } from '../components/ConciliarLinha'
 import { sugerir, sugestaoUnica } from '../lib/conciliacao'
+import { NOME_ACAO, regraDaLinha, type Regra } from '../lib/regras'
 import { somaDias } from '../lib/contas'
 import { dataBr, dinheiro, mesDe } from '../lib/notas'
 import { mensagemErro, supabase } from '../supabase'
@@ -31,6 +32,7 @@ export default function Conciliacao() {
   const [aviso, setAviso] = useState('')
   const [ocupado, setOcupado] = useState(false)
   const [carregando, setCarregando] = useState(true)
+  const [regras, setRegras] = useState<Regra[]>([])
 
   useEffect(() => {
     supabase
@@ -51,6 +53,11 @@ export default function Conciliacao() {
     if (!conta) return
     setErro('')
     setCarregando(true)
+    supabase
+      .from('regras_conciliacao')
+      .select('*')
+      .eq('ativo', true)
+      .then(({ data }) => setRegras((data ?? []) as Regra[]))
     let q = supabase
       .from('extrato_lancamentos')
       .select('*, conta_pagar:contas_pagar(descricao, parcela), plano:plano_contas(codigo, nome), destino:contas_bancarias!extrato_lancamentos_conta_destino_id_fkey(descricao)')
@@ -99,6 +106,17 @@ export default function Conciliacao() {
     return m
   }, [linhas, candidatas, ligadas])
 
+  // regra que decide cada linha pendente (as automáticas já teriam sido aplicadas; aqui sobram as que só sugerem)
+  const regraPorLinha = useMemo(() => {
+    const m = new Map<string, Regra>()
+    for (const l of linhas) {
+      if (l.conciliado) continue
+      const r = regraDaLinha(regras, l)
+      if (r) m.set(l.id, r)
+    }
+    return m
+  }, [linhas, regras])
+
   // confirmação em lote: uma única conta possível, sem a mesma conta sugerida para duas linhas
   const lote = useMemo(() => {
     const pares = linhas.flatMap(l => {
@@ -109,6 +127,11 @@ export default function Conciliacao() {
     for (const p of pares) usos.set(p.conta.id, (usos.get(p.conta.id) ?? 0) + 1)
     return pares.filter(p => usos.get(p.conta.id) === 1)
   }, [linhas, sugestoes])
+  // linhas com regra e sem conta a pagar sugerida: confirmar a regra
+  const loteRegras = useMemo(
+    () => linhas.filter(l => !l.conciliado && regraPorLinha.has(l.id) && (sugestoes.get(l.id) ?? []).length === 0),
+    [linhas, regraPorLinha, sugestoes],
+  )
 
   async function confirmarLote() {
     setOcupado(true)
@@ -118,6 +141,11 @@ export default function Conciliacao() {
     for (const p of lote) {
       const { error } = await supabase.rpc('conciliar_com_conta', { p_lancamento: p.linha.id, p_conta: p.conta.id })
       if (error) falhas.push(`${dataBr(p.linha.data)} ${dinheiro(p.linha.valor)}: ${mensagemErro(error)}`)
+      else ok++
+    }
+    for (const l of loteRegras) {
+      const { error } = await supabase.rpc('aplicar_regra', { p_lancamento: l.id, p_regra: regraPorLinha.get(l.id)!.id })
+      if (error) falhas.push(`${dataBr(l.data)} ${dinheiro(l.valor)}: ${mensagemErro(error)}`)
       else ok++
     }
     setOcupado(false)
@@ -186,13 +214,22 @@ export default function Conciliacao() {
       {erro && <p className="erro">{erro}</p>}
       {aviso && <p className="ok pre">{aviso}</p>}
 
-      {podeLancar && lote.length > 0 && (
+      {podeLancar && lote.length + loteRegras.length > 0 && (
         <div className="barra-lote">
           <span>
-            <b>{lote.length}</b> saída(s) com uma única conta a pagar correspondente (mesmo valor, data próxima, já aprovada).
+            {lote.length > 0 && (
+              <>
+                <b>{lote.length}</b> saída(s) com uma única conta a pagar correspondente.{' '}
+              </>
+            )}
+            {loteRegras.length > 0 && (
+              <>
+                <b>{loteRegras.length}</b> linha(s) com regra que só sugere.
+              </>
+            )}
           </span>
           <button className="primario" onClick={confirmarLote} disabled={ocupado}>
-            {ocupado ? 'Conciliando…' : `Confirmar ${lote.length} sugestão(ões)`}
+            {ocupado ? 'Conciliando…' : `Confirmar ${lote.length + loteRegras.length} sugestão(ões)`}
           </button>
         </div>
       )}
@@ -228,6 +265,13 @@ export default function Conciliacao() {
                           {l.tipo_conciliacao === 'transferencia' && (l.destino ? `com ${l.destino.descricao}` : 'entre contas do grupo')}
                         </div>
                       </>
+                    ) : regraPorLinha.has(l.id) && sug.length === 0 ? (
+                      <>
+                        <span className="selo aviso">regra</span>
+                        <div className="mudanca">
+                          {regraPorLinha.get(l.id)!.nome} → {NOME_ACAO[regraPorLinha.get(l.id)!.acao]}
+                        </div>
+                      </>
                     ) : sug.length > 0 ? (
                       <>
                         <span className="selo aviso">sugestão</span>
@@ -259,6 +303,7 @@ export default function Conciliacao() {
           linha={aberta}
           lojaId={conta.loja_id}
           sugestoes={(sugestoes.get(aberta.id) ?? []).map(s => s.conta)}
+          regra={regraPorLinha.get(aberta.id) ?? null}
           aoFechar={alterou => {
             setAberta(null)
             if (alterou) carregar()

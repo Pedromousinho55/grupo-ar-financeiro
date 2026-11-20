@@ -159,6 +159,10 @@ export default function Bancos() {
         .eq('id', imp.id)
       mensagens.push(`${a.nome}: ${novas} lançamento(s) novo(s), ${e.transacoes.length - novas} já existiam.`)
     }
+    // regras automáticas (Contamax, tarifas…) conciliam sozinhas o que é repetitivo
+    const { data: auto, error: eRegras } = await supabase.rpc('aplicar_regras_automaticas', { p_conta: null })
+    if (eRegras) mensagens.push(`Regras automáticas: ${mensagemErro(eRegras)}`)
+    else if (auto) mensagens.push(`${auto} lançamento(s) conciliado(s) automaticamente pelas regras.`)
     setOcupado(false)
     setArquivos([])
     setAviso(mensagens.join('\n'))
