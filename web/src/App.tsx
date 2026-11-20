@@ -3,6 +3,8 @@ import { BrowserRouter, NavLink, Navigate, Route, Routes } from 'react-router-do
 import { AuthProvider, NOME_PAPEL, useAuth } from './auth'
 import Cadastro from './components/Cadastro'
 import ContasPagar from './pages/ContasPagar'
+import Bancos from './pages/Bancos'
+import Conciliacao from './pages/Conciliacao'
 import { AMBIENTE } from './config'
 import * as C from './pages/cadastros'
 import DefinirSenha from './pages/DefinirSenha'
@@ -19,6 +21,8 @@ const MENU: [string, string][] = [
   ['/', 'Início'],
   ['/notas', 'Notas fiscais'],
   ['/contas', 'Contas a pagar'],
+  ['/bancos', 'Bancos'],
+  ['/conciliacao', 'Conciliação'],
   ['/fornecedores', 'Fornecedores'],
   ['/plano-contas', 'Plano de contas'],
   ['/grupos-dre', 'Grupos do plano'],
@@ -80,6 +84,8 @@ function Conteudo() {
           <Route path="/notas" element={<Notas />} />
           <Route path="/notas/enviar" element={<EnviarXml />} />
           <Route path="/contas" element={<ContasPagar />} />
+          <Route path="/bancos" element={<Bancos />} />
+          <Route path="/conciliacao" element={<Conciliacao />} />
           <Route path="/fornecedores" element={<Cadastro key="f" config={C.FORNECEDORES} />} />
           <Route path="/plano-contas" element={<Cadastro key="p" config={C.PLANO_CONTAS} />} />
           <Route path="/grupos-dre" element={<Cadastro key="g" config={C.GRUPOS_DRE} />} />

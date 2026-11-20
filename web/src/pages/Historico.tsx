@@ -25,6 +25,8 @@ const NOME_TABELA: Record<string, string> = {
   notas_fiscais: 'Nota fiscal',
   eventos_nfe: 'Evento de nota (SEFAZ)',
   contas_pagar: 'Conta a pagar',
+  extrato_lancamentos: 'Linha do extrato',
+  extrato_importacoes: 'Importação de extrato',
 }
 const NOME_ACAO = { INSERT: 'incluiu', UPDATE: 'alterou', DELETE: 'apagou' }
 // dados/duplicatas das notas são o conteúdo do XML (itens etc.): longos demais para o histórico
@@ -33,6 +35,9 @@ const IGNORAR = new Set(['id', 'criado_em', 'atualizado_em', 'dados', 'duplicata
 function resumo(e: Evento): string {
   const r = e.depois ?? e.antes ?? {}
   if (e.tabela === 'notas_fiscais') return `NF-e ${r.numero ?? ''} · ${r.emitente_nome ?? ''}`
+  if (e.tabela === 'extrato_lancamentos')
+    return `${r.data ?? ''} · ${r.descricao ?? ''} · ${Number(r.valor ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
+  if (e.tabela === 'extrato_importacoes') return String(r.arquivo_nome ?? '')
   if (e.tabela === 'contas_pagar')
     return `${r.descricao ?? ''}${r.parcela ? ` (${r.parcela})` : ''} · ${Number(r.valor ?? 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}`
   return String(r.razao_social ?? r.nome ?? r.apelido ?? r.descricao ?? r.titular ?? '')

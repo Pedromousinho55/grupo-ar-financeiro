@@ -24,6 +24,7 @@ export default function Inicio() {
   const { perfil } = useAuth()
   const [contagens, setContagens] = useState<Record<string, number>>({})
   const [aConferir, setAConferir] = useState<number | null>(null)
+  const [aConciliar, setAConciliar] = useState<number | null>(null)
   const [alertas, setAlertas] = useState<Alerta[]>([])
   const [contas, setContas] = useState<{ vencidas: number[]; hoje: number[]; semana: number[]; aAprovar: number[] } | null>(null)
 
@@ -39,6 +40,11 @@ export default function Inicio() {
       .eq('status', 'na_sefaz')
       .eq('situacao_sefaz', 'autorizada')
       .then(({ count }) => setAConferir(count ?? 0))
+    supabase
+      .from('extrato_lancamentos')
+      .select('*', { count: 'exact', head: true })
+      .eq('conciliado', false)
+      .then(({ count }) => setAConciliar(count ?? 0))
     const hoje = hojeRecife()
     supabase
       .from('contas_pagar')
@@ -99,6 +105,10 @@ export default function Inicio() {
 
       <h2>Cadastros e notas</h2>
       <div className="cartoes">
+        <Link to="/conciliacao" className="cartao-num">
+          <b>{aConciliar === null ? '…' : aConciliar.toLocaleString('pt-BR')}</b>
+          <span>Extrato a conciliar</span>
+        </Link>
         <Link to="/notas" className="cartao-num">
           <b>{aConferir === null ? '…' : aConferir.toLocaleString('pt-BR')}</b>
           <span>Notas a conferir</span>
