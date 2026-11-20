@@ -189,3 +189,12 @@ end $$;
 \echo 'OK C11 - nota cancelada na SEFAZ não é lançada; histórico registra tudo'
 
 \echo '>>> TODOS OS TESTES DO CONTAS A PAGAR PASSARAM'
+
+-- 12) Empresas de serviços e chave PIX das contas (migração 13)
+do $$ begin
+  assert (select count(*) from public.contas_bancarias c join public.lojas l on l.id = c.loja_id
+          where l.cnpj in ('19330768000151','40508530000160') and c.pix_chave is not null) = 2, 'MDF e SFC com conta e PIX';
+  assert (select pix_chave from public.lojas l join public.contas_bancarias c on c.loja_id = l.id where l.cnpj = '19330768000151') = 'pixvoaratelie@gmail.com', 'PIX da MDF';
+end $$;
+\echo 'OK C12 - MDF e SFC cadastradas com conta Santander e chave PIX'
+\echo '>>> TODOS OS TESTES DO CONTAS A PAGAR PASSARAM'

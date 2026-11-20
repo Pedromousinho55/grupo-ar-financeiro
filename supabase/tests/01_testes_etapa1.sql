@@ -17,9 +17,9 @@ end $$;
 
 -- 2) Dados iniciais -----------------------------------------------------
 do $$ begin
-  assert (select count(*) from public.lojas) = 5, 'deveria haver 5 lojas';
+  assert (select count(*) from public.lojas) = 7, 'deveria haver 7 empresas (5 lojas + MDF e SFC)';
   assert (select count(*) from public.centros_custo) = 4, 'deveria haver 4 centros de custo';
-  raise notice 'OK 2 - 5 lojas, centros de custo e formas de pagamento cadastrados';
+  raise notice 'OK 2 - 7 empresas, centros de custo e formas de pagamento cadastrados';
 end $$;
 
 -- 3) Usuários de teste ---------------------------------------------------
@@ -66,7 +66,7 @@ select pg_temp.entrar('00000000-0000-0000-0000-000000000004');
 set role authenticated;
 do $$ declare n int; begin
   select count(*) into n from public.lojas;
-  assert n = 5, 'consulta deveria ver as 5 lojas';
+  assert n = 7, 'consulta deveria ver as 7 empresas';
   begin
     insert into public.fornecedores (documento, razao_social) values ('60543245000197', 'NAO DEVERIA');
     assert false, 'consulta não deveria conseguir incluir fornecedor';
