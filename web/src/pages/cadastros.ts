@@ -61,6 +61,13 @@ export const FORNECEDORES: ConfigCadastro = {
     },
     { chave: 'pix_chave', rotulo: 'Chave PIX' },
     { chave: 'prazo_padrao_dias', rotulo: 'Prazo padrão (dias)', tipo: 'numero', naLista: true },
+    {
+      chave: 'plano_conta_padrao_id',
+      rotulo: 'Plano de contas padrão',
+      tipo: 'selecao',
+      opcoesDe: { tabela: 'plano_contas', rotulo: 'nome' },
+      dica: 'Usado ao conciliar pagamento de nota deste fornecedor (vazio = último usado ou 2.1.1 Insumos cozinha)',
+    },
     { chave: 'email', rotulo: 'E-mail' },
     { chave: 'telefone', rotulo: 'Telefone' },
     { chave: 'observacao', rotulo: 'Observação', tipo: 'texto_longo' },

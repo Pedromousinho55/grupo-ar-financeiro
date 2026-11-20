@@ -3,6 +3,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useAuth } from '../auth'
 import ConciliarLinha, { type CandidataConta, type LinhaExtrato } from '../components/ConciliarLinha'
+import { casamentoUnico, casarComNotas, chaveParcela, type CasamentoNota, type NotaParaCasar } from '../lib/casarNotas'
 import { sugerir, sugestaoUnica } from '../lib/conciliacao'
 import { NOME_ACAO, regraDaLinha, type Regra } from '../lib/regras'
 import { somaDias } from '../lib/contas'
@@ -33,6 +34,8 @@ export default function Conciliacao() {
   const [ocupado, setOcupado] = useState(false)
   const [carregando, setCarregando] = useState(true)
   const [regras, setRegras] = useState<Regra[]>([])
+  const [notas, setNotas] = useState<NotaParaCasar[]>([])
+  const [parcelasUsadas, setParcelasUsadas] = useState<Set<string>>(new Set())
 
   useEffect(() => {
     supabase
@@ -93,6 +96,28 @@ export default function Conciliacao() {
       for (const x of r.data ?? []) lig.add(x.conta_pagar_id as string)
     }
     setLigadas(lig)
+    // notas fiscais da empresa emitidas até ~4 meses antes do período (para casar boletos com parcelas)
+    const desde = somaDias(periodo.de || '2000-01-01', -120)
+    const notasLidas: NotaParaCasar[] = []
+    for (let i = 0; ; i += 1000) {
+      const { data: nd } = await supabase
+        .from('notas_fiscais')
+        .select('id, numero, emitente_nome, fornecedor_id, valor_total, data_emissao, duplicatas')
+        .eq('loja_id', conta.loja_id)
+        .eq('situacao_sefaz', 'autorizada')
+        .gte('data_emissao', desde + 'T00:00:00-03:00')
+        .range(i, i + 999)
+      notasLidas.push(...((nd ?? []) as NotaParaCasar[]))
+      if (!nd || nd.length < 1000) break
+    }
+    setNotas(notasLidas)
+    const usadas = new Set<string>()
+    const idsNotas = notasLidas.map(n => n.id)
+    for (let i = 0; i < idsNotas.length; i += 200) {
+      const { data: cp } = await supabase.from('contas_pagar').select('nota_id, parcela').in('nota_id', idsNotas.slice(i, i + 200)).neq('status', 'cancelada')
+      for (const x of cp ?? []) usadas.add(chaveParcela(x.nota_id as string, (x.parcela as string | null) ?? null))
+    }
+    setParcelasUsadas(usadas)
     setCarregando(false)
   }, [conta, periodo, soPendentes])
 
@@ -127,10 +152,34 @@ export default function Conciliacao() {
     for (const p of pares) usos.set(p.conta.id, (usos.get(p.conta.id) ?? 0) + 1)
     return pares.filter(p => usos.get(p.conta.id) === 1)
   }, [linhas, sugestoes])
+  // saídas sem conta a pagar sugerida: casar com parcela/total de nota fiscal
+  const casamentos = useMemo(() => {
+    const m = new Map<string, CasamentoNota[]>()
+    for (const l of linhas)
+      if (!l.conciliado && l.valor < 0 && (sugestoes.get(l.id) ?? []).length === 0) {
+        const c = casarComNotas(l, notas, parcelasUsadas)
+        if (c.length) m.set(l.id, c)
+      }
+    return m
+  }, [linhas, notas, parcelasUsadas, sugestoes])
+  // lote de notas: casamento único, e a mesma parcela não pode servir a duas linhas
+  const loteNotas = useMemo(() => {
+    const pares = linhas.flatMap(l => {
+      const c = casamentoUnico(casamentos.get(l.id) ?? [])
+      return c ? [{ linha: l, casamento: c }] : []
+    })
+    const usos = new Map<string, number>()
+    for (const p of pares) {
+      const k = chaveParcela(p.casamento.nota.id, p.casamento.parcela)
+      usos.set(k, (usos.get(k) ?? 0) + 1)
+    }
+    return pares.filter(p => usos.get(chaveParcela(p.casamento.nota.id, p.casamento.parcela)) === 1)
+  }, [linhas, casamentos])
+
   // linhas com regra e sem conta a pagar sugerida: confirmar a regra
   const loteRegras = useMemo(
-    () => linhas.filter(l => !l.conciliado && regraPorLinha.has(l.id) && (sugestoes.get(l.id) ?? []).length === 0),
-    [linhas, regraPorLinha, sugestoes],
+    () => linhas.filter(l => !l.conciliado && regraPorLinha.has(l.id) && (sugestoes.get(l.id) ?? []).length === 0 && !casamentos.has(l.id)),
+    [linhas, regraPorLinha, sugestoes, casamentos],
   )
 
   async function confirmarLote() {
@@ -140,6 +189,16 @@ export default function Conciliacao() {
     const falhas: string[] = []
     for (const p of lote) {
       const { error } = await supabase.rpc('conciliar_com_conta', { p_lancamento: p.linha.id, p_conta: p.conta.id })
+      if (error) falhas.push(`${dataBr(p.linha.data)} ${dinheiro(p.linha.valor)}: ${mensagemErro(error)}`)
+      else ok++
+    }
+    for (const p of loteNotas) {
+      const { error } = await supabase.rpc('conciliar_com_nota', {
+        p_lancamento: p.linha.id,
+        p_nota: p.casamento.nota.id,
+        p_vencimento: p.casamento.vencimento,
+        p_parcela: p.casamento.parcela,
+      })
       if (error) falhas.push(`${dataBr(p.linha.data)} ${dinheiro(p.linha.valor)}: ${mensagemErro(error)}`)
       else ok++
     }
@@ -214,7 +273,7 @@ export default function Conciliacao() {
       {erro && <p className="erro">{erro}</p>}
       {aviso && <p className="ok pre">{aviso}</p>}
 
-      {podeLancar && lote.length + loteRegras.length > 0 && (
+      {podeLancar && lote.length + loteNotas.length + loteRegras.length > 0 && (
         <div className="barra-lote">
           <span>
             {lote.length > 0 && (
@@ -222,14 +281,19 @@ export default function Conciliacao() {
                 <b>{lote.length}</b> saída(s) com uma única conta a pagar correspondente.{' '}
               </>
             )}
+            {loteNotas.length > 0 && (
+              <>
+                <b>{loteNotas.length}</b> pagamento(s) que casam com uma única nota fiscal.{' '}
+              </>
+            )}
             {loteRegras.length > 0 && (
               <>
-                <b>{loteRegras.length}</b> linha(s) com regra que só sugere.
+                <b>{loteRegras.length}</b> linha(s) com regra a confirmar.
               </>
             )}
           </span>
           <button className="primario" onClick={confirmarLote} disabled={ocupado}>
-            {ocupado ? 'Conciliando…' : `Confirmar ${lote.length + loteRegras.length} sugestão(ões)`}
+            {ocupado ? 'Conciliando…' : `Confirmar ${lote.length + loteNotas.length + loteRegras.length} sugestão(ões)`}
           </button>
         </div>
       )}
@@ -263,6 +327,15 @@ export default function Conciliacao() {
                           {l.tipo_conciliacao === 'conta_pagar' && `${l.conta_pagar?.descricao ?? ''}${l.conta_pagar?.parcela ? ` (${l.conta_pagar.parcela})` : ''}`}
                           {l.tipo_conciliacao === 'receita' && (l.plano ? `${l.plano.codigo ?? ''} ${l.plano.nome}` : '')}
                           {l.tipo_conciliacao === 'transferencia' && (l.destino ? `com ${l.destino.descricao}` : 'entre contas do grupo')}
+                        </div>
+                      </>
+                    ) : sug.length === 0 && casamentos.has(l.id) ? (
+                      <>
+                        <span className="selo aviso">nota fiscal</span>
+                        <div className="mudanca">
+                          NF-e {casamentos.get(l.id)![0].nota.numero} · {casamentos.get(l.id)![0].nota.emitente_nome}
+                          {casamentos.get(l.id)![0].parcela ? ` (${casamentos.get(l.id)![0].parcela})` : ''}
+                          {casamentos.get(l.id)!.length > 1 && ` (+${casamentos.get(l.id)!.length - 1})`}
                         </div>
                       </>
                     ) : regraPorLinha.has(l.id) && sug.length === 0 ? (
@@ -304,6 +377,7 @@ export default function Conciliacao() {
           lojaId={conta.loja_id}
           sugestoes={(sugestoes.get(aberta.id) ?? []).map(s => s.conta)}
           regra={regraPorLinha.get(aberta.id) ?? null}
+          casamentos={casamentos.get(aberta.id) ?? []}
           aoFechar={alterou => {
             setAberta(null)
             if (alterou) carregar()

@@ -106,6 +106,10 @@ Sempre aplicar e testar primeiro no **teste**.
    → transferência, receita ou conta a pagar já paga. A primeira regra que bate (menor prioridade) decide. Regra "automática" concilia
    sozinha ao importar o extrato; "só sugere" aparece na Conciliação para confirmar em lote. A tela mostra quantas linhas pendentes
    cada regra pega. Pagamentos entre empresas do grupo (ex.: Arvo → SFC para cobrir folha/impostos) não têm regra: tratar caso a caso.
+6. **Pagamento de nota fiscal**: saída que casa com uma parcela (duplicata de mesmo valor, vencimento até 7 dias) ou com o total de
+   uma nota sem duplicata (paga até 45 dias após a emissão) aparece como "nota fiscal"; ao confirmar, a conta a pagar da nota é criada
+   já paga e a nota fica "Lançada". O plano de contas vem do **plano padrão do fornecedor** (cadastro de Fornecedores) → último usado
+   → 2.1.1 Insumos cozinha.
 
 ## Para desenvolvedores: rodar os testes
 ```
