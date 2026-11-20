@@ -129,20 +129,20 @@ end $$;
 \echo '>>> Dados dos cartões CNPJ conferidos'
 
 do $$ begin
-  assert (select count(*) from public.grupos_dre) = 16, 'devem existir 16 grupos';
-  assert (select count(*) from public.plano_contas) = 82, 'devem existir 82 subgrupos';
-  assert (select g.codigo from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where p.codigo = '2.6.2') = '2.6', 'Energia deve estar em 2.6';
+  assert (select count(*) from public.grupos_dre) = 15, 'devem existir 15 grupos (2.1 COMPRAS apagado em 20/11)';
+  assert (select count(*) from public.plano_contas) = 80, 'devem existir 80 subgrupos (2.1.01 e 2.1.02 abolidas em 20/11)';
+  assert (select g.codigo from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where p.codigo = '2.5.2') = '2.5', 'Energia deve estar em 2.5 (antes 2.6)';
   assert (select p.codigo from public.grupos_dre g join public.grupos_dre p on p.id = g.grupo_pai_id where g.codigo = '1.0.0') = '1.0', '1.0.0 deve estar dentro de 1.0';
-  assert (select array_agg(codigo order by ordem_codigo) from public.plano_contas where codigo in ('2.6.2','2.6.10')) = array['2.6.2','2.6.10'], 'ordem numérica';
-  assert (select tipo_despesa from public.plano_contas where codigo = '2.1.03') = 'variavel', 'taxa de antecipação variável';
+  assert (select array_agg(codigo order by ordem_codigo) from public.plano_contas where codigo in ('2.5.2','2.5.10')) = array['2.5.2','2.5.10'], 'ordem numérica';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.4.5') = 'variavel', 'taxa de antecipação variável (em despesas financeiras)';
 end $$;
-\echo '>>> Plano de contas do Grupo AR conferido (16 grupos, 82 subgrupos)'
+\echo '>>> Plano de contas do Grupo AR conferido (15 grupos, 80 subgrupos)'
 
 do $$ begin
   assert (select bool_and(not p.operacional) from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where g.codigo in ('3.1','3.3')), '3.1 e 3.3 não operacionais';
-  assert (select tipo_despesa from public.plano_contas where codigo = '2.3.2') = 'variavel', 'gelo variável';
-  assert (select tipo_despesa from public.plano_contas where codigo = '2.6.2') = 'fixa', 'energia fixa';
-  assert (select tipo_despesa from public.plano_contas where codigo = '2.5.2') = 'variavel', 'taxa cartão variável';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.2.2') = 'variavel', 'gelo variável';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.5.2') = 'fixa', 'energia fixa';
+  assert (select tipo_despesa from public.plano_contas where codigo = '2.4.2') = 'variavel', 'taxa cartão variável';
   assert (select natureza from public.plano_contas where codigo = '1.1.05') = 'deducao', 'descontos = dedução';
   assert (select count(*) from public.plano_contas p join public.grupos_dre g on g.id = p.grupo_dre_id where g.codigo = '1.0.0' and p.natureza <> 'deducao') = 0, 'impostos = dedução';
 end $$;

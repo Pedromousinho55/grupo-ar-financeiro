@@ -5,6 +5,7 @@ import type { ContaCandidata } from '../lib/conciliacao'
 import { NOME_STATUS_CONTA } from '../lib/contas'
 import { dataBr, dinheiro } from '../lib/notas'
 import { NOME_ACAO, type Regra } from '../lib/regras'
+import type { CasamentoNota } from '../lib/casarNotas'
 import { mensagemErro, supabase } from '../supabase'
 import { useCadastrosConta } from './cadastrosConta'
 
@@ -31,25 +32,28 @@ export interface CandidataConta extends ContaCandidata {
   fornecedor: { razao_social: string; nome_fantasia: string | null } | null
 }
 
-type Modo = 'regra' | 'sugestao' | 'buscar' | 'criar' | 'receita' | 'transferencia'
+type Modo = 'nota' | 'regra' | 'sugestao' | 'buscar' | 'criar' | 'receita' | 'transferencia'
 
 export default function ConciliarLinha({
   linha,
   lojaId,
   sugestoes,
   regra = null,
+  casamentos = [],
   aoFechar,
 }: {
   linha: LinhaExtrato
   lojaId: string
   sugestoes: CandidataConta[]
   regra?: Regra | null
+  casamentos?: CasamentoNota[]
   aoFechar: (alterou: boolean) => void
 }) {
   const { podeLancar, eMaster } = useAuth()
   const cad = useCadastrosConta()
   const saida = linha.valor < 0
-  const [modo, setModo] = useState<Modo>(sugestoes.length ? 'sugestao' : regra ? 'regra' : saida ? 'criar' : 'receita')
+  const [modo, setModo] = useState<Modo>(sugestoes.length ? 'sugestao' : casamentos.length ? 'nota' : regra ? 'regra' : saida ? 'criar' : 'receita')
+  const [casamentoEscolhido, setCasamentoEscolhido] = useState(0)
   const [escolhida, setEscolhida] = useState(sugestoes[0]?.id ?? '')
   const [busca, setBusca] = useState('')
   const [achadas, setAchadas] = useState<CandidataConta[]>([])
@@ -102,6 +106,13 @@ export default function ConciliarLinha({
   }
 
   function confirmar() {
+    if (modo === 'nota') {
+      const c = casamentos[casamentoEscolhido]
+      if (!c) return setErro('Escolha a nota fiscal.')
+      return executar(() =>
+        supabase.rpc('conciliar_com_nota', { p_lancamento: linha.id, p_nota: c.nota.id, p_vencimento: c.vencimento, p_parcela: c.parcela }),
+      )
+    }
     if (modo === 'regra' && regra) return executar(() => supabase.rpc('aplicar_regra', { p_lancamento: linha.id, p_regra: regra.id }))
     if (modo === 'sugestao' || modo === 'buscar') {
       if (!escolhida) return setErro('Escolha a conta a pagar.')
@@ -147,7 +158,8 @@ export default function ConciliarLinha({
   }
 
   const deRegra: [Modo, string][] = regra ? [['regra', `Regra: ${regra.nome}`]] : []
-  const opcoes: [Modo, string][] = deRegra.concat(saida
+  const deNota: [Modo, string][] = casamentos.length ? [['nota', `Nota fiscal (${casamentos.length})`]] : []
+  const opcoes: [Modo, string][] = deNota.concat(deRegra, saida
     ? [
         ...(sugestoes.length ? ([['sugestao', `Sugestões (${sugestoes.length})`]] as [Modo, string][]) : []),
         ['buscar', 'Procurar conta a pagar'],
@@ -194,6 +206,26 @@ export default function ConciliarLinha({
                 </button>
               ))}
             </div>
+
+            {modo === 'nota' && (
+              <div className="opcoes-status lista">
+                {casamentos.map((c, i) => (
+                  <label key={`${c.nota.id}${c.parcela}`} className={`opcao${casamentoEscolhido === i ? ' marcada' : ''}`}>
+                    <input type="radio" name="nota" checked={casamentoEscolhido === i} onChange={() => setCasamentoEscolhido(i)} />
+                    <span>
+                      <b>
+                        NF-e {c.nota.numero} · {c.nota.emitente_nome}
+                        {c.parcela ? ` · parcela ${c.parcela}` : ''}
+                      </b>
+                      <small>
+                        {dinheiro(c.valor)} · {c.vencimento ? `vencimento ${dataBr(c.vencimento)}` : `nota inteira, emitida em ${dataBr(c.nota.data_emissao)}`}
+                      </small>
+                      <small>Cria a conta a pagar desta nota já paga, no plano padrão do fornecedor (ou 2.1.1 Insumos cozinha).</small>
+                    </span>
+                  </label>
+                ))}
+              </div>
+            )}
 
             {modo === 'regra' && regra && (
               <p className="info">
