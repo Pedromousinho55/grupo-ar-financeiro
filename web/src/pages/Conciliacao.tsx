@@ -182,17 +182,18 @@ export default function Conciliacao() {
     [linhas, regraPorLinha, sugestoes, casamentos],
   )
 
-  async function confirmarLote() {
+  // pagamentos (conta/nota) e sugestões de regra são confirmados separadamente: regras "só sugere" pedem olhar caso a caso
+  async function confirmarLote(tipo: 'pagamentos' | 'regras') {
     setOcupado(true)
     setErro('')
     let ok = 0
     const falhas: string[] = []
-    for (const p of lote) {
+    for (const p of tipo === 'pagamentos' ? lote : []) {
       const { error } = await supabase.rpc('conciliar_com_conta', { p_lancamento: p.linha.id, p_conta: p.conta.id })
       if (error) falhas.push(`${dataBr(p.linha.data)} ${dinheiro(p.linha.valor)}: ${mensagemErro(error)}`)
       else ok++
     }
-    for (const p of loteNotas) {
+    for (const p of tipo === 'pagamentos' ? loteNotas : []) {
       const { error } = await supabase.rpc('conciliar_com_nota', {
         p_lancamento: p.linha.id,
         p_nota: p.casamento.nota.id,
@@ -202,7 +203,7 @@ export default function Conciliacao() {
       if (error) falhas.push(`${dataBr(p.linha.data)} ${dinheiro(p.linha.valor)}: ${mensagemErro(error)}`)
       else ok++
     }
-    for (const l of loteRegras) {
+    for (const l of tipo === 'regras' ? loteRegras : []) {
       const { error } = await supabase.rpc('aplicar_regra', { p_lancamento: l.id, p_regra: regraPorLinha.get(l.id)!.id })
       if (error) falhas.push(`${dataBr(l.data)} ${dinheiro(l.valor)}: ${mensagemErro(error)}`)
       else ok++
@@ -292,9 +293,18 @@ export default function Conciliacao() {
               </>
             )}
           </span>
-          <button className="primario" onClick={confirmarLote} disabled={ocupado}>
-            {ocupado ? 'Conciliando…' : `Confirmar ${lote.length + loteNotas.length + loteRegras.length} sugestão(ões)`}
-          </button>
+          <span className="botoes-lote">
+            {lote.length + loteNotas.length > 0 && (
+              <button className="primario" onClick={() => confirmarLote('pagamentos')} disabled={ocupado}>
+                {ocupado ? 'Conciliando…' : `Confirmar ${lote.length + loteNotas.length} pagamento(s)`}
+              </button>
+            )}{' '}
+            {loteRegras.length > 0 && (
+              <button onClick={() => confirmarLote('regras')} disabled={ocupado}>
+                {`Confirmar ${loteRegras.length} sugestão(ões) de regra`}
+              </button>
+            )}
+          </span>
         </div>
       )}
 

@@ -9,6 +9,7 @@ Comandos (rodar na pasta do coletor):
   python -m grupoar_coletor pausar --loja Arvo     deixa de consultar a SEFAZ para a loja (ex.: notas vêm do Klaus)
   python -m grupoar_coletor retomar --loja Arvo    volta a consultar
   python -m grupoar_coletor importar <arquivo.zip | arquivo.xml | pasta>   importa XMLs baixados do Klaus
+  python -m grupoar_coletor klaus [--dias 7] [--loja Voar]   busca notas e eventos na API do Klaus (só leitura)
 """
 from __future__ import annotations
 
@@ -27,6 +28,7 @@ from . import certificado, cofre
 from .banco import Banco
 from .coleta import coletar_loja
 from .importar import importar
+from .klaus import ErroKlaus, importar_klaus
 
 PASTA = Path(__file__).resolve().parent.parent
 CONFIG = PASTA / "config.json"
@@ -39,6 +41,8 @@ PADRAO = {
     "cadeia_icp": str(PASTA / "cadeia_icp.pem"),
     "certificados": {},  # cnpj -> caminho do .pfx
     "coleta_pausada": {},  # cnpj -> motivo (ex.: notas vêm do Klaus da contabilidade)
+    "klaus_automatico": False,  # true: a rotina agendada ("coletar") também busca na API do Klaus
+    "klaus_dias": 7,  # janela de dias buscada no Klaus a cada execução (reimportar não duplica)
 }
 
 
@@ -141,6 +145,20 @@ def cmd_coletar(cfg: dict, so_loja: str | None, ambiente: str) -> None:
         ctx = certificado.contexto_tls(caminho, senha, Path(cfg["cadeia_icp"]))
         r = coletar_loja(banco, loja, ctx, pasta_local, ambiente)
         logging.info("Resultado: %s", r)
+    if cfg.get("klaus_automatico") and not so_loja:
+        cmd_klaus(cfg, int(cfg.get("klaus_dias") or 7), None, banco)
+
+
+def cmd_klaus(cfg: dict, dias: int, so_loja: str | None, banco: Banco | None = None) -> None:
+    try:
+        resumos = importar_klaus(banco or conectar(cfg), Path(cfg["pasta_xml"]), dias=dias, so_loja=so_loja)
+    except ErroKlaus as e:
+        logging.error("Klaus: %s", e)
+        print(f"✗ Klaus: {e}")
+        return
+    for r in resumos:
+        situacao = f"✗ {r.erros[0]}" if r.erros and not r.paginas else "✓"
+        print(f"{situacao} {r.loja}: {r.notas} nota(s) no período, {r.notas_novas} nova(s); {r.eventos_novos} evento(s) novo(s)")
 
 
 def _achar_loja(banco: Banco, apelido: str) -> dict:
@@ -250,6 +268,9 @@ def main() -> None:
     re_.add_argument("--loja", required=True)
     im = sub.add_parser("importar", help="importa XMLs (.xml, .zip ou pasta) baixados de outro sistema")
     im.add_argument("caminho")
+    kl = sub.add_parser("klaus", help="busca notas e eventos na API do Klaus (só leitura) e importa")
+    kl.add_argument("--dias", type=int, default=7)
+    kl.add_argument("--loja")
     a = p.parse_args()
 
     (PASTA / "logs").mkdir(exist_ok=True)
@@ -273,6 +294,8 @@ def main() -> None:
         cmd_retomar(cfg, a.loja)
     elif a.comando == "importar":
         cmd_importar(cfg, a.caminho)
+    elif a.comando == "klaus":
+        cmd_klaus(cfg, a.dias, a.loja)
 
 
 if __name__ == "__main__":
