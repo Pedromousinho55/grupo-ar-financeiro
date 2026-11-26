@@ -69,9 +69,11 @@ class Banco:
 
     def incluir_evento(self, dados: dict) -> bool:
         try:
-            self._pedir("POST", "/rest/v1/eventos_nfe?on_conflict=chave,tipo_evento,sequencia", dados,
-                        {"Prefer": "resolution=ignore-duplicates,return=minimal"})
-            return True
+            # com ignore-duplicates o banco devolve só o que foi realmente incluído:
+            # evento repetido volta vazio e não conta como novo
+            r = self._pedir("POST", "/rest/v1/eventos_nfe?on_conflict=chave,tipo_evento,sequencia&select=id", dados,
+                            {"Prefer": "resolution=ignore-duplicates,return=representation"})
+            return bool(r)
         except ErroBanco as e:
             if "409" in str(e):
                 return False

@@ -48,6 +48,11 @@ Sempre aplicar e testar primeiro no **teste**.
 - Grava resumos, notas completas (com duplicatas) e cancelamentos no Supabase; cópia local dos XMLs.
 - **Não faz manifestação** nesta versão (só leitura). A Ciência automática será ligada após aprovação.
 - Comandos: `configurar`, `certificados`, `coletar [--loja X]`, `agendar` (08:10 e 14:10).
+- **API do Klaus** (contabilidade SATIERF): `klaus [--dias 7] [--loja X]` busca notas e eventos recebidos pela API (só leitura,
+  nunca os envios) e importa como no `importar` (não duplica). Com `"klaus_automatico": true` no `config.json`, a rotina das
+  08:10 e 14:10 também busca no Klaus os últimos `klaus_dias` dias. Token no Cofre do Windows ("GrupoAR-Coletor" / "klaus-token");
+  para guardar: `Read-Host -AsSecureString` (o PowerShell não cola na pergunta escondida do Python). Cada execução fica registrada em
+  `coletor_execucoes` (cstat = KLAUS). A API limita chamadas seguidas: o coletor espera e tenta de novo.
 - Testes: `cd coletor && python -m pytest -q testes`
 
 ## Como usar o site (Etapa 1)
